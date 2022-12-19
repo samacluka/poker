@@ -120,7 +120,7 @@ let handRankings: Array<HandRanking> = [
     {name: "TWO PAIR", rank: 8, check: twoPair},
     {name: "ONE PAIR", rank: 9, check: onePair},
     // {name: "HIGH CARD", ranking: 10, check: highCard}
-    {name: "NOTHING", rank: -1, check: nothing},
+    {name: "NOTHING", rank: 11, check: nothing},
 ];
 
 /** *************************************************************** **/
@@ -151,19 +151,11 @@ class Player {
     }
 
     displayDealtCards(){
-        let retStr: string = "";
-        for(var i = 0; i < (this.hand?.cards.length ?? 0); i++){
-            retStr += displayCard( this.hand?.cards[i] );
-        }
-        return retStr;
+        return displayCards(this.hand?.cards ?? []);
     }
 
     displayBestHand(){
-        let retStr: string = "";
-        for(var i = 0; i < (this.hand?.best.length ?? 0); i++){
-            retStr += displayCard( this.hand?.best[i] );
-        }
-        return retStr;
+        return displayCards(this.hand?.best ?? []);
     }
 
 }
@@ -214,15 +206,20 @@ class Dealer {
         return players;
     }
 
-    displayCommunal(){
-        let retStr: string = "";
-        for(var i = 0; i < this.flop.length; i++){
-            retStr += displayCard( this.flop[i] );
-        }
-        if(this.river) retStr += " | " + displayCard( this.river );
-        if(this.turn) retStr += " | " + displayCard( this.turn );
+    displayAll(){
+        return `${this.displayFlop()} | ${this.displayRiver()} | ${this.displayTurn()}`;
+    }
 
-        return retStr;
+    displayFlop(){
+        return displayCards(this.flop);
+    }
+
+    displayRiver(){
+        return displayCard(this.river);
+    }
+
+    displayTurn(){
+        return displayCard(this.turn);
     }
 
     executeFlop(){
@@ -317,22 +314,22 @@ function compareHands(players: Array<Player>, communal: Array<Card>){
     return sortPlayersByHand(players);
 }
 
-function buildIndexTree(deck: Array<Card>){
+function buildIndexTree(cards: Array<Card>){
     let retObj: any = {};
     retObj[suits.spade] = {};
     retObj[suits.club] = {};
     retObj[suits.diamond] = {};
     retObj[suits.heart] = {};
 
-    for(var i = 0; i < deck.length; i++){
-        retObj[deck[i].suit][deck[i].kind] = i;
+    for(var i = 0; i < cards.length; i++){
+        retObj[ cards[i].suit ][ cards[i].kind ] = i;
     }
 
     return retObj;
 }
 
 function getTreeIndex(tree: any, card: Card){
-    return tree[ card.suit ][ card.kind ];
+    return tree[ card.suit ][ card.kind ] ?? undefined;
 }
 
 function probability(players: Array<Player>, dealer: Dealer){
@@ -413,6 +410,14 @@ function displayCard(card: Card | null | undefined = null){
     return `[${ _kinds[ card.kind ] }${ _suits[ card.suit ] }]`;
 }
 
+function displayCards(cards: Array<Card> = []){
+    let retStr: string = "";
+    for(var i = 0; i < cards.length; i++){
+        retStr += displayCard( cards[i] );
+    }
+    return retStr;
+}
+
 function continuityCheck(a: Card, b: Card) {
     return (Math.abs(a.kind - b.kind) == 1 || Math.abs(a.kind % kinds.ace - b.kind % kinds.ace) == 1);
 }
@@ -444,17 +449,24 @@ function groupBySuitSortByKind(cards: Array<Card>, aceIsHigh: boolean = true){
 }
 
 function fillRestOfHand(best: Array<Card>, allCards: Array<Card>){
-    if(best.length >= 5) return best;
-
-    allCards = sortByKind(allCards);
-    let tree = buildIndexTree(best); // tree of best cards
-
-    for(var i = 0; i < allCards.length; i++){
-        if(!getTreeIndex(tree, allCards[i])){
-            best.push(allCards[i]);
-            if(best.length >= 5) return best;
-        }
+    if(best.length >= 5) {
+        best = sortByKind(best);
     }
+    else {
+
+        allCards = sortByKind(allCards);
+        let tree = buildIndexTree(best); // tree of best cards
+
+        for (var i = 0; i < allCards.length; i++) {
+            if (typeof getTreeIndex(tree, allCards[i]) == 'undefined') {
+                best.push(allCards[i]);
+                if (best.length >= 5) return best;
+            }
+        }
+
+    }
+
+    return best.slice(0, 5);
 }
 
 function compareHighCards(a: Array<Card>, b: Array<Card>){
@@ -466,7 +478,7 @@ function compareHighCards(a: Array<Card>, b: Array<Card>){
         if(!b[i]) return 1; // a.length > b.length
         if(a[i].kind == b[i].kind) continue; // same kind so we skip
 
-        return a[i].kind > b[i].kind ? 1 : -1;
+        return a[i].kind > b[i].kind ? -1 : 1;
     }
 
     return 0;
@@ -531,16 +543,18 @@ function xOfAnySuit(x: number, cards: Array<Card>){
     let scores: any = numOfEachSuit(cards);
 
     for(const key in scores){
-        if(scores[ key ].score >= x) return scores[ key ].cards;
+        if(scores[ key ].score >= x) {
+            return fillRestOfHand(scores[ key ].cards, cards);
+        }
     }
 
     return false;
 }
 
 function longestConsecutiveKindChainLength(cards: Array<Card>){
-    let currChain: Array<Card> = [];
-    let longestChain: Array<Card> = [];
     let prevCard: Card = cards[0];
+    let currChain: Array<Card> = [ prevCard ];
+    let longestChain: Array<Card> = [ prevCard ];
 
     for(var i = 1; i < cards.length; i++) {
         if(continuityCheck(prevCard, cards[i])) {
@@ -565,12 +579,7 @@ function longestConsecutiveKindChainLength(cards: Array<Card>){
 /** *************************************************************** **/
 
 function nothing(cards: Array<Card>){
-    return cards;
-}
-
-function getHighCardHand(cards: Array<Card>){
-    cards = sortByKind(cards);
-    return cards.slice(0, 5);
+    return sortByKind(cards).slice(0, 5);
 }
 
 function onePair(cards: Array<Card>){
@@ -586,11 +595,12 @@ function twoPair(cards: Array<Card>){
         // if the score was ever greater than two, that still technically is a pair
         // but we dont have to worry about preemptively building a best with more than 5 cards
         // because that would then qualify as a full house
-        if(scores[ key ].score >= 2) {
-            best.push(scores[key].cards);
+        if(scores[ key ].score >= 2){
+            best = best.concat(scores[key].cards);
+            numPairs = numPairs + 1;
             // will get hit as soon as (and if) the numPairs is equal to two
             // the greater than is redundant, but good practice
-            if (++numPairs >= 2) {
+            if (numPairs >= 2) {
                 return fillRestOfHand(best, cards);
             }
         }
@@ -611,6 +621,8 @@ function straight(cards: Array<Card>){
     cards = sortByKind(cards, false);
     chain = longestConsecutiveKindChainLength(cards);
     if(!!chain && chain.length >= 5) return chain;
+
+    return false;
 }
 
 function flush(cards: Array<Card>){
@@ -626,8 +638,8 @@ function fullHouse(cards: Array<Card>){
     for(const key in scores){
         if(
             scores[ key ].score == 3 // don't have to worry about >= 3 bc then it would be four of a kind (which is a better hand)
-            && compareHighCards(threeOfAKind, scores[ key ].cards) == -1 // check to see if its worth replacing - in the case of multiple three of a kinds
-        ) {
+            && compareHighCards(threeOfAKind, scores[ key ].cards) == 1 // check to see if its worth replacing - in the case of multiple three of a kinds
+        ){
             // if the threeOfAKind variable was already populated (there are multiple three of a kinds in this hand)
             // check to see if its worth putting in the pair variable
             if(!!threeOfAKind && compareHighCards(threeOfAKind, pair) == -1){
@@ -638,14 +650,14 @@ function fullHouse(cards: Array<Card>){
 
         if(
             scores[ key ].score == 2
-            && compareHighCards(pair, scores[ key ].cards) == -1 // double check its worth replacing with the current pair
+            && compareHighCards(pair, scores[ key ].cards) == 1 // double check its worth replacing with the current pair
         ){
             pair = scores[key].cards;
         }
     }
 
     // return hand
-    return pair.concat(threeOfAKind);
+    return pair.length && threeOfAKind.length ? pair.concat(threeOfAKind) : false;
 }
 
 function fourOfAKind(cards: Array<Card>){
@@ -727,9 +739,9 @@ console.log("");
 
 d.executeFlop();
 players = probability(players, d);
-console.log(d.displayCommunal());
+console.log(d.displayAll());
 for(i = 0; i < players.length; i++){
-    console.log(players[i].name, players[i].displayDealtCards(), `${(players[i].probabilityOfWinning ?? 0)*100}%`);
+    console.log(players[i].name, players[i].displayDealtCards(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
 }
 
 console.log("");
@@ -738,9 +750,9 @@ console.log("");
 
 d.executeRiver();
 players = probability(players, d);
-console.log(d.displayCommunal());
+console.log(d.displayAll());
 for(i = 0; i < players.length; i++){
-    console.log(players[i].name, players[i].displayDealtCards(), `${(players[i].probabilityOfWinning ?? 0)*100}%`);
+    console.log(players[i].name, players[i].displayDealtCards(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
 }
 
 console.log("");
@@ -749,7 +761,21 @@ console.log("");
 
 d.executeTurn();
 players = probability(players, d);
-console.log(d.displayCommunal());
+console.log(d.displayAll());
 for(i = 0; i < players.length; i++){
-    console.log(players[i].name, players[i].displayDealtCards(), `${(players[i].probabilityOfWinning ?? 0)*100}%`);
+    console.log(players[i].name, players[i].displayDealtCards(), players[i].displayBestHand(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
 }
+
+
+/// TESTING TESTING
+
+// let cards: Array<Card> = [
+//     {suit: suits.spade, kind: kinds.six},
+//     {suit: suits.club, kind: kinds.six},
+//     {suit: suits.heart, kind: kinds.queen},
+//     {suit: suits.diamond, kind: kinds.queen},
+//     {suit: suits.diamond, kind: kinds.five},
+//     {suit: suits.diamond, kind: kinds.king},
+// ];
+//
+// console.log(twoPair(cards));
