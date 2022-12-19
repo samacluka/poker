@@ -1,4 +1,4 @@
-import {Card, Dealer, HandRanking, Player, KindScore, SuitScore} from "./models";
+import {Card, HandRanking, Hand} from "./models";
 
 /** *************************************************************** **/
 /** *************************************************************** **/
@@ -8,7 +8,7 @@ import {Card, Dealer, HandRanking, Player, KindScore, SuitScore} from "./models"
 
 const that: any = this;
 
-const kinds = {
+const kinds: any = {
     two: 1,
     three: 2,
     four: 3,
@@ -24,7 +24,7 @@ const kinds = {
     ace: 13
 };
 
-const kindsInv = {
+const kindsInv: any = {
     1: "two",
     2: "three",
     3: "four",
@@ -40,14 +40,14 @@ const kindsInv = {
     13: "ace"
 };
 
-const suits = {
+const suits: any = {
     spade: 1,
     club: 2,
     diamond: 3,
     heart: 4
 }
 
-const suitsInv = {
+const suitsInv: any = {
     1: "spade",
     2: "club",
     3: "diamond",
@@ -110,18 +110,123 @@ const deck: Array<Card> = [
 ];
 
 let handRankings: Array<HandRanking> = [
-    {name: "ROYAL FLUSH", ranking: 1, check: royalFlush},
-    {name: "STRAIGHT FLUSH", ranking: 2, check: straightFlush},
-    {name: "FOUR OF A KIND", ranking: 3, check: fourOfAKind},
-    {name: "FULL HOUSE", ranking: 4, check: fullHouse},
-    {name: "FLUSH", ranking: 5, check: flush},
-    {name: "STRAIGHT", ranking: 6, check: straight},
-    {name: "THREE OF A KIND", ranking: 7, check: threeOfAKind},
-    {name: "TWO PAIR", ranking: 8, check: twoPair},
-    {name: "ONE PAIR", ranking: 9, check: onePair},
+    {name: "ROYAL FLUSH", rank: 1, check: royalFlush},
+    {name: "STRAIGHT FLUSH", rank: 2, check: straightFlush},
+    {name: "FOUR OF A KIND", rank: 3, check: fourOfAKind},
+    {name: "FULL HOUSE", rank: 4, check: fullHouse},
+    {name: "FLUSH", rank: 5, check: flush},
+    {name: "STRAIGHT", rank: 6, check: straight},
+    {name: "THREE OF A KIND", rank: 7, check: threeOfAKind},
+    {name: "TWO PAIR", rank: 8, check: twoPair},
+    {name: "ONE PAIR", rank: 9, check: onePair},
     // {name: "HIGH CARD", ranking: 10, check: highCard}
-    {name: "NOTHING", ranking: -1, check: null},
+    {name: "NOTHING", rank: -1, check: null},
 ];
+
+/** *************************************************************** **/
+/** *************************************************************** **/
+/** ************************** CLASSES **************************** **/
+/** *************************************************************** **/
+/** *************************************************************** **/
+
+class Player {
+    id: number;
+    name: string;
+    hand: Hand | null;
+    probabilityOfWinning: number | null;
+    rank: number | null;
+
+    constructor(id: number = 0, name: string = "", hand: Hand | null = null, probabilityOfWinning: number | null = null, rank: number | null = null) {
+        this.id = id;
+        this.name = name;
+        this.hand = hand;
+        this.probabilityOfWinning = probabilityOfWinning;
+        this.rank = rank;
+    }
+
+
+}
+
+class Dealer {
+    deck: Array<Card>;
+    negative: Array<Card>;
+    all: Array<Card>;
+    flop: Array<Card>;
+    river: Card | null;
+    turn: Card | null;
+
+    constructor(deck: Array<Card> = [], negative: Array<Card> = [], all: Array<Card> = [], flop: Array<Card> = [], river: Card | null = null, turn: Card | null = null) {
+        this.deck = deck;
+        this.negative = negative;
+        this.all = all;
+        this.flop = flop;
+        this.river = river;
+        this.turn = turn;
+    }
+
+    shuffle(){
+        for (var i = this.deck.length - 1; i > 0; i--) {
+
+            // Generate random number
+            var j = Math.floor(Math.random() * (i + 1));
+
+            var temp = this.deck[i];
+            this.deck[i] = this.deck[j];
+            this.deck[j] = temp;
+        }
+
+        return this.deck;
+    }
+
+    drawTopCard(){
+        if(!this.deck[0]) throw new Error("EMPTY DECK"); // Only possible if A LOT of players
+        let card: Card = this.deck[0];
+        this.negative.push(card);
+        this.deck.splice(0,1);
+        return card;
+    }
+
+    deal(players: Array<Player> = []){
+        for (var i = 0; i < players.length; i++) {
+            players[i].hand?.cards.push( this.drawTopCard() )
+        }
+        return this;
+    }
+
+    executeFlop(){
+        // discard three
+        this.drawTopCard();
+        this.drawTopCard();
+        this.drawTopCard();
+
+        // draw three
+        this.flop = [
+            this.drawTopCard(),
+            this.drawTopCard(),
+            this.drawTopCard()
+        ];
+
+        this.all = this.flop;
+
+        return this;
+    }
+
+    executeRiver(){
+        this.drawTopCard(); // discard one
+        this.river = this.drawTopCard();
+        this.all.push(this.river);
+        return this;
+    }
+
+    executeTurn(){
+        this.drawTopCard(); // discard one
+        this.turn = this.drawTopCard();
+        this.all.push(this.turn);
+        return this;
+    }
+
+
+}
 
 /** *************************************************************** **/
 /** *************************************************************** **/
@@ -130,21 +235,36 @@ let handRankings: Array<HandRanking> = [
 /** *************************************************************** **/
 
 function rankHand(cards: Array<Card>){
-    let i: number;
     let res: Array<Card> | boolean;
-    for(i = 0; i < handRankings.length; i++){
+    for(var i = 0; i < handRankings.length; i++){
         res = handRankings[i].check.call(that, cards);
-        if(!!res) return handRankings[i];
+        if(!!res || i == (handRankings.length - 1)) {
+            return <Hand>{
+                cards: cards,
+                best: res,
+                ranking: handRankings[i]
+            };
+        }
     }
-    return handRankings[handRankings.length];
+
+    // should be unreachable
+    return <Hand>{
+        cards: cards,
+        best: null,
+        ranking: handRankings[handRankings.length - 1]
+    };
 }
 
 function compareHands(players: Array<Player>){
     for(const index in players){
-        players[index].hand.ranking = rankHand(players[index].hand.cards);
+        players[index].hand = rankHand(players[index].hand?.cards ?? []);
     }
 
-    return players.sort((a: Player, b: Player) => a.hand.ranking > b.hand.ranking ? 1 : -1 );
+    return players.sort((a: Player, b: Player) =>
+        (a.hand?.ranking?.rank ?? 0) > (b.hand?.ranking?.rank ?? 0) ? 1 : (
+            (a.hand?.ranking?.rank ?? 0) < (b.hand?.ranking?.rank ?? 0) ? -1 : compareHighCards(a.hand?.cards ?? [], b.hand?.cards ?? [])
+        )
+    );
 }
 
 function buildIndexTree(deck: Array<Card>){
@@ -181,8 +301,10 @@ function probability(players: Array<Player>, dealer: Dealer){
         // build negative deck
         for(const pi in players){
             p = players[pi]
-            for(const ci in p.hand){
-                c = p.hand[ci];
+            for(var ci = 0; ci < (p.hand?.cards.length ?? 0); ci++){
+                if(!!p.hand?.cards[ci]) continue;
+                // @ts-ignore
+                c = p.hand?.cards[ci];
                 i = tree[c.suit][c.kind];
                 if(cardIndexesToRemoveFromDeck.indexOf(i) != -1) continue;
                 negativeDeck.push(dealersDeck[i]);
@@ -190,7 +312,8 @@ function probability(players: Array<Player>, dealer: Dealer){
             }
         }
 
-        for(const ci in dealer.all){
+        for(ci = 0; ci < (dealer.all.length ?? 0); ci++){
+            if(!!dealer.all[ci]) continue;
             c = dealer.all[ci];
             i = tree[c.suit][c.kind];
             if(cardIndexesToRemoveFromDeck.indexOf(i) != -1) continue;
@@ -214,12 +337,12 @@ function continuityCheck(a: Card, b: Card) {
     return (Math.abs(a.kind - b.kind) == 1 || Math.abs(a.kind % kinds.ace - b.kind % kinds.ace) == 1);
 }
 
-function sortByRank(cards: Array<Card>, aceIsHigh: boolean = true){
+function sortByKind(cards: Array<Card>, aceIsHigh: boolean = true){
     if(aceIsHigh) return cards.sort((a: Card, b: Card) => a.kind < b.kind ? 1 : -1);
     else return cards.sort((a: Card, b: Card) => (a.kind % kinds.ace) < (b.kind % kinds.ace) ? 1 : -1);
 }
 
-function groupBySuitSortByRank(cards: Array<Card>, aceIsHigh: boolean = true){
+function groupBySuitSortByKind(cards: Array<Card>, aceIsHigh: boolean = true){
     let groups: { [key: string]: Array<Card> } = {
         spade: [],
         club: [],
@@ -234,14 +357,26 @@ function groupBySuitSortByRank(cards: Array<Card>, aceIsHigh: boolean = true){
     let retVal: Array<Card> = [];
     for(const key in groups){
         retVal = retVal.concat(
-            sortByRank(groups[key], aceIsHigh)
+            sortByKind(groups[key], aceIsHigh)
         );
     }
     return retVal;
 }
 
+function compareHighCards(a: Array<Card>, b: Array<Card>){
+    a = sortByKind(a);
+    b = sortByKind(b);
+
+    for(var i = 0; i < a.length; i++){
+        if(a[i].kind == b[i].kind) continue;
+        return a[i].kind > b[i].kind ? 1 : -1;
+    }
+
+    return 0;
+}
+
 function numOfEachKind(cards: Array<Card>){
-    let scores: KindScore = {
+    let scores: any = {
         two: {score: 0, cards: []},
         three: {score: 0, cards: []},
         four: {score: 0, cards: []},
@@ -260,14 +395,13 @@ function numOfEachKind(cards: Array<Card>){
     cards.forEach(card => {
         scores[ kindsInv[ card.kind ] ].score++;
         scores[ kindsInv[ card.kind ] ].cards.push(card);
-        return;
     });
 
     return scores;
 }
 
 function xOfAnyKind(x: number, cards: Array<Card>){
-    let scores: KindScore = numOfEachKind(cards);
+    let scores: any = numOfEachKind(cards);
 
     for(const key in scores){
         if(scores[ key ].score >= x) return scores[ key ].cards;
@@ -277,7 +411,7 @@ function xOfAnyKind(x: number, cards: Array<Card>){
 }
 
 function numOfEachSuit(cards: Array<Card>){
-    let scores: SuitScore = {
+    let scores: any = {
         spade: {score: 0, cards: []},
         club: {score: 0, cards: []},
         diamond: {score: 0, cards: []},
@@ -287,14 +421,13 @@ function numOfEachSuit(cards: Array<Card>){
     cards.forEach(card => {
         scores[ suitsInv[ card.suit ] ].score++;
         scores[ suitsInv[ card.suit ] ].cards.push(card);
-        return;
     });
 
     return scores;
 }
 
 function xOfAnySuit(x: number, cards: Array<Card>){
-    let scores: SuitScore = numOfEachSuit(cards);
+    let scores: any = numOfEachSuit(cards);
 
     for(const key in scores){
         if(scores[ key ].score >= x) return scores[ key ].cards;
@@ -303,13 +436,12 @@ function xOfAnySuit(x: number, cards: Array<Card>){
     return false;
 }
 
-function longestConsecutiveSuitChainLength(cards: Array<Card>){
+function longestConsecutiveKindChainLength(cards: Array<Card>){
     let currChain: Array<Card> = [];
     let longestChain: Array<Card> = [];
     let prevCard: Card = cards[0];
-    let i: number;
 
-    for(i = 1; i < cards.length; i++) {
+    for(var i = 1; i < cards.length; i++) {
         if(continuityCheck(prevCard, cards[i])) {
             currChain.push( cards[i] );
         }
@@ -331,19 +463,26 @@ function longestConsecutiveSuitChainLength(cards: Array<Card>){
 /** *************************************************************** **/
 /** *************************************************************** **/
 
+function getHighCardHand(cards: Array<Card>){
+    cards = sortByKind(cards);
+    return cards.slice(0, 5);
+}
+
 function onePair(cards: Array<Card>){
     return xOfAnyKind(2, cards);
 }
 
 function twoPair(cards: Array<Card>){
-    let scores: KindScore = numOfEachKind(cards);
+    let scores: any = numOfEachKind(cards);
     let numPairs: number = 0;
 
     for(const key in scores){
-        if(scores[ key ].score >= 2) numPairs++;
+        if(scores[ key ].score >= 2)
+            if(++numPairs >= 2)
+                return true;
     }
 
-    return numPairs >= 2;
+    return false;
 }
 
 function threeOfAKind(cards: Array<Card>){
@@ -351,12 +490,12 @@ function threeOfAKind(cards: Array<Card>){
 }
 
 function straight(cards: Array<Card>){
-    cards = sortByRank(cards);
-    let chain: Array<Card> | boolean = longestConsecutiveSuitChainLength(cards);
+    cards = sortByKind(cards);
+    let chain: Array<Card> | boolean = longestConsecutiveKindChainLength(cards);
     if(!!chain && chain.length >= 5) return chain;
 
-    cards = sortByRank(cards, false);
-    chain = longestConsecutiveSuitChainLength(cards);
+    cards = sortByKind(cards, false);
+    chain = longestConsecutiveKindChainLength(cards);
     if(!!chain && chain.length >= 5) return chain;
 }
 
@@ -365,7 +504,7 @@ function flush(cards: Array<Card>){
 }
 
 function fullHouse(cards: Array<Card>){
-    let scores: KindScore = numOfEachKind(cards);
+    let scores: any = numOfEachKind(cards);
     let pair: boolean = false;
     let threeOfAKind: boolean = false;
 
@@ -382,12 +521,11 @@ function fourOfAKind(cards: Array<Card>){
 }
 
 function straightFlush(cards: Array<Card>){
-    cards = groupBySuitSortByRank(cards);
+    cards = groupBySuitSortByKind(cards);
     let currChain: Array<Card> = [];
     let prevCard: Card = cards[0];
-    let i: number;
 
-    for(i = 1; i < cards.length; i++) {
+    for(var i = 1; i < cards.length; i++) {
         if(prevCard.suit == cards[i].suit && continuityCheck(prevCard, cards[i])) {
             currChain.push( cards[i] );
         }
@@ -404,13 +542,12 @@ function straightFlush(cards: Array<Card>){
 }
 
 function royalFlush(cards: Array<Card>){
-    cards = groupBySuitSortByRank(cards);
+    cards = groupBySuitSortByKind(cards);
     let currChain: Array<Card> = [];
     let prevCard: Card = cards[0];
     let aceSuit: number = prevCard.kind == kinds.ace ? prevCard.suit : 0;
-    let i: number;
 
-    for(i = 1; i < cards.length; i++) {
+    for(var i = 1; i < cards.length; i++) {
         if(prevCard.suit == cards[i].suit && aceSuit == cards[i].suit && continuityCheck(prevCard, cards[i])) {
             currChain.push(cards[i]);
         }
@@ -433,41 +570,3 @@ function royalFlush(cards: Array<Card>){
 /** *************************************************************** **/
 /** *************************************************************** **/
 
-let p1: Player = {
-    id: 1,
-    name: "Chris",
-    hand: {
-        cards: [
-            {suit: suits.spade, kind: kinds.ace},
-            {suit: suits.club, kind: kinds.ace},
-        ],
-        ranking: null
-    },
-    probabilityOfWinning: null,
-    rank: null
-};
-
-let p2: Player = {
-    id: 2,
-    name: "Brodie",
-    hand: {
-        cards: [
-            {suit: suits.heart, kind: kinds.eight},
-            {suit: suits.heart, kind: kinds.nine},
-        ],
-        ranking: null
-    },
-    probabilityOfWinning: null,
-    rank: null
-};
-
-let dealer: Dealer = {
-    deck: deck,
-    negative: [],
-    all: [],
-    flop: [],
-    river: null,
-    turn: null
-}
-
-probability([p1,p2], dealer);
