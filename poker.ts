@@ -119,8 +119,7 @@ let handRankings: Array<HandRanking> = [
     {name: "THREE OF A KIND", rank: 7, check: threeOfAKind},
     {name: "TWO PAIR", rank: 8, check: twoPair},
     {name: "ONE PAIR", rank: 9, check: onePair},
-    // {name: "HIGH CARD", ranking: 10, check: highCard}
-    {name: "NOTHING", rank: 11, check: nothing},
+    {name: "NOTHING", rank: 10, check: nothing},
 ];
 
 /** *************************************************************** **/
@@ -770,12 +769,14 @@ for(i = 0; i < players.length; i++){
 /// TESTING TESTING
 
 // let cards: Array<Card> = [
-//     {suit: suits.spade, kind: kinds.six},
-//     {suit: suits.club, kind: kinds.six},
-//     {suit: suits.heart, kind: kinds.queen},
-//     {suit: suits.diamond, kind: kinds.queen},
 //     {suit: suits.diamond, kind: kinds.five},
+//     {suit: suits.club, kind: kinds.four},
+// ];
+// let communal: Array<Card> = [
+//     {suit: suits.diamond, kind: kinds.ten},
+//     {suit: suits.club, kind: kinds.six},
+//     {suit: suits.spade, kind: kinds.king},
 //     {suit: suits.diamond, kind: kinds.king},
 // ];
 //
-// console.log(twoPair(cards));
+// console.log(rankHand(cards, communal));
