@@ -11,6 +11,6 @@ export interface HandRanking {
 
 export interface Hand {
     cards: Array<Card>,
-    best: Array<Card> | null,
+    best: Array<Card>,
     ranking: HandRanking | null
 }
