@@ -176,7 +176,9 @@ class Dealer {
         this.turn = turn;
     }
 
-    shuffle(){
+    shuffle(n: number = 1): any {
+        if(n <= 0) return this;
+
         for (var i = this.deck.length - 1; i > 0; i--) {
 
             // Generate random number
@@ -187,7 +189,7 @@ class Dealer {
             this.deck[j] = temp;
         }
 
-        return this;
+        return this.shuffle(n - 1);
     }
 
     drawTopCard(){
@@ -221,6 +223,13 @@ class Dealer {
         return displayCard(this.turn);
     }
 
+    executeNext(){
+        if(!this.flop.length) this.executeFlop();
+        else if(!this.river) this.executeRiver();
+        else if(!this.turn) this.executeTurn();
+        else throw new Error("#123456789 BAD LOGIC");
+    }
+
     executeFlop(){
         // discard three
         this.drawTopCard();
@@ -251,7 +260,7 @@ class Dealer {
 
     executeTurn(){
         // flop && river must be first
-        if(!this.flop || !this.river) return this; // silent exit
+        if(!this.flop.length || !this.river) return this; // silent exit
 
         this.drawTopCard(); // discard one
         this.turn = this.drawTopCard();
@@ -351,18 +360,18 @@ function probability(players: Array<Player>, dealer: Dealer){
                 // it will be equal to (i**2 + i)/2
                 for(var j = (i + 1); j < dealer.deck.length; j++){
                     players = compareHands(players, dealer.all.concat(dealer.deck[i], dealer.deck[j]));
-                    if(players[0].outs.indexOf([dealer.deck[i], dealer.deck[j]]) == -1) {
+                    // if(players[0].outs.indexOf([dealer.deck[i], dealer.deck[j]]) == -1) {
                         players[0].outs.push([dealer.deck[i], dealer.deck[j]]);
                         loops++;
-                    }
+                    // }
                 }
             }
             else {
                 players = compareHands(players, dealer.all.concat(dealer.deck[i]));
-                if(players[0].outs.indexOf(dealer.deck[i]) == -1) {
+                // if(players[0].outs.indexOf(dealer.deck[i]) == -1) {
                     players[0].outs.push(dealer.deck[i]);
                     loops++;
-                }
+                // }
             }
         }
 
@@ -459,7 +468,7 @@ function fillRestOfHand(best: Array<Card>, allCards: Array<Card>){
         for (var i = 0; i < allCards.length; i++) {
             if (typeof getTreeIndex(tree, allCards[i]) == 'undefined') {
                 best.push(allCards[i]);
-                if (best.length >= 5) return best;
+                if (best.length >= 5) break;
             }
         }
 
@@ -550,7 +559,7 @@ function xOfAnySuit(x: number, cards: Array<Card>){
     return false;
 }
 
-function longestConsecutiveKindChainLength(cards: Array<Card>){
+function longestConsecutiveKindChain(cards: Array<Card>){
     let prevCard: Card = cards[0];
     let currChain: Array<Card> = [ prevCard ];
     let longestChain: Array<Card> = [ prevCard ];
@@ -588,18 +597,11 @@ function onePair(cards: Array<Card>){
 function twoPair(cards: Array<Card>){
     let scores: any = numOfEachKind(cards);
     let best: Array<Card> = [];
-    let numPairs: number = 0;
 
     for(const key in scores){
-        // if the score was ever greater than two, that still technically is a pair
-        // but we dont have to worry about preemptively building a best with more than 5 cards
-        // because that would then qualify as a full house
-        if(scores[ key ].score >= 2){
+        if(scores[ key ].score == 2){
             best = best.concat(scores[key].cards);
-            numPairs = numPairs + 1;
-            // will get hit as soon as (and if) the numPairs is equal to two
-            // the greater than is redundant, but good practice
-            if (numPairs >= 2) {
+            if ((best.length / 2) >= 2) {
                 return fillRestOfHand(best, cards);
             }
         }
@@ -614,11 +616,11 @@ function threeOfAKind(cards: Array<Card>){
 
 function straight(cards: Array<Card>){
     cards = sortByKind(cards);
-    let chain: Array<Card> | boolean = longestConsecutiveKindChainLength(cards);
+    let chain: Array<Card> | boolean = longestConsecutiveKindChain(cards);
     if(!!chain && chain.length >= 5) return chain;
 
     cards = sortByKind(cards, false);
-    chain = longestConsecutiveKindChainLength(cards);
+    chain = longestConsecutiveKindChain(cards);
     if(!!chain && chain.length >= 5) return chain;
 
     return false;
@@ -721,50 +723,24 @@ let p4: Player = new Player(4, "p4");
 let p5: Player = new Player(5, "p5");
 let p6: Player = new Player(6, "p6");
 let d: Dealer = new Dealer(deck);
+// let players: Array<Player> = [p1, p2];
 let players: Array<Player> = [p1, p2, p3, p4, p5, p6];
-players = d.shuffle().deal(players);
+players = d.shuffle( Math.floor(Math.random() * 10) ).deal(players);
 
-console.log("");
-console.log("=============== DEAL =================");
-console.log("");
+var i = 0;
+for(var j = 0; j < 3; j++){
+    console.log("");
+    if(j == 0) console.log("=============== FLOP =================");
+    else if(j == 1) console.log("=============== RIVER =================");
+    else if(j == 2) console.log("=============== TURN =================");
 
-for(var i = 0; i < players.length; i++){
-    console.log(players[i].name, players[i].displayDealtCards(), `${(players[i].probabilityOfWinning ?? 0)*100}%`);
+    d.executeNext();
+    players = probability(players, d);
+    console.log(d.displayAll());
+    for(i = 0; i < players.length; i++){
+        console.log(players[i].name, players[i].displayDealtCards(), players[i].displayBestHand(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
+    }
 }
-
-console.log("");
-console.log("=============== FLOP =================");
-console.log("");
-
-d.executeFlop();
-players = probability(players, d);
-console.log(d.displayAll());
-for(i = 0; i < players.length; i++){
-    console.log(players[i].name, players[i].displayDealtCards(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
-}
-
-console.log("");
-console.log("=============== RIVER =================");
-console.log("");
-
-d.executeRiver();
-players = probability(players, d);
-console.log(d.displayAll());
-for(i = 0; i < players.length; i++){
-    console.log(players[i].name, players[i].displayDealtCards(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
-}
-
-console.log("");
-console.log("=============== TURN =================");
-console.log("");
-
-d.executeTurn();
-players = probability(players, d);
-console.log(d.displayAll());
-for(i = 0; i < players.length; i++){
-    console.log(players[i].name, players[i].displayDealtCards(), players[i].displayBestHand(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
-}
-
 
 /// TESTING TESTING
 
