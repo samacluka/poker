@@ -350,28 +350,27 @@ function probability(players: Array<Player>, dealer: Dealer){
     }
     else {
         // simulate
-        for(var i = 0; i < dealer.deck.length; i++){
-            if(!dealer.river){
-                // j starts at i because we are looking for combinations not permutation
-                // that is, order is irrelevant
+        if(!dealer.river){
+            for(var i = 0; i < dealer.deck.length; i++){
+
+                // j starts at i because we are looking for combinations not permutation (order is irrelevant)
                 // drawing the (jack of clubs) then the (queen of hearts) is the same as drawing the (queen of hearts) then the (jack of clubs)
                 // then the + 1 because i can never equal j. that would mean we're drawing the same card twice
                 // So, instead of the # loops being equal to i * j
-                // it will be equal to (i**2 + i)/2
+                // it will be equal to (i**2 + i)/2 (which is the sum equivalent of a factorial (!i))
+
                 for(var j = (i + 1); j < dealer.deck.length; j++){
                     players = compareHands(players, dealer.all.concat(dealer.deck[i], dealer.deck[j]));
-                    // if(players[0].outs.indexOf([dealer.deck[i], dealer.deck[j]]) == -1) {
-                        players[0].outs.push([dealer.deck[i], dealer.deck[j]]);
-                        loops++;
-                    // }
+                    players[0].outs.push([dealer.deck[i], dealer.deck[j]]);
+                    loops++;
                 }
             }
-            else {
+        }
+        else {
+            for(var i = 0; i < dealer.deck.length; i++){
                 players = compareHands(players, dealer.all.concat(dealer.deck[i]));
-                // if(players[0].outs.indexOf(dealer.deck[i]) == -1) {
-                    players[0].outs.push(dealer.deck[i]);
-                    loops++;
-                // }
+                players[0].outs.push(dealer.deck[i]);
+                loops++;
             }
         }
 
@@ -667,8 +666,8 @@ function fourOfAKind(cards: Array<Card>){
 
 function straightFlush(cards: Array<Card>){
     cards = groupBySuitSortByKind(cards);
-    let currChain: Array<Card> = [];
     let prevCard: Card = cards[0];
+    let currChain: Array<Card> = [ prevCard ];
 
     for(var i = 1; i < cards.length; i++) {
         if(prevCard.suit == cards[i].suit && continuityCheck(prevCard, cards[i])) {
@@ -678,7 +677,7 @@ function straightFlush(cards: Array<Card>){
             currChain = [ cards[i] ];
         }
 
-        if(currChain.length > 5) return currChain;
+        if(currChain.length >= 5) return currChain;
 
         prevCard = cards[i];
     }
@@ -688,8 +687,8 @@ function straightFlush(cards: Array<Card>){
 
 function royalFlush(cards: Array<Card>){
     cards = groupBySuitSortByKind(cards);
-    let currChain: Array<Card> = [];
     let prevCard: Card = cards[0];
+    let currChain: Array<Card> = prevCard.kind == kinds.ace ? [ prevCard ] : [];
     let aceSuit: number = prevCard.kind == kinds.ace ? prevCard.suit : 0;
 
     for(var i = 1; i < cards.length; i++) {
