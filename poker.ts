@@ -164,16 +164,16 @@ class Dealer {
     negative: Array<Card>;
     all: Array<Card>;
     flop: Array<Card>;
-    river: Card | null;
     turn: Card | null;
+    river: Card | null;
 
-    constructor(deck: Array<Card> = [], negative: Array<Card> = [], all: Array<Card> = [], flop: Array<Card> = [], river: Card | null = null, turn: Card | null = null) {
+    constructor(deck: Array<Card> = [], negative: Array<Card> = [], all: Array<Card> = [], flop: Array<Card> = [], turn: Card | null = null, river: Card | null = null) {
         this.deck = deck;
         this.negative = negative;
         this.all = all;
         this.flop = flop;
-        this.river = river;
         this.turn = turn;
+        this.river = river;
     }
 
     shuffle(n: number = 1): any {
@@ -207,27 +207,53 @@ class Dealer {
         return players;
     }
 
+    burn(cards: Card | Array<Card>){
+        if(!Array.isArray(cards)) cards = [cards];
+
+        let tree = buildIndexTree(this.deck);
+        for(let i = 0; i < cards.length; i++) {
+            let index = getTreeIndex(tree, cards[i]);
+            if (!!index) {
+                this.negative.push(cards[i]);
+                this.deck.splice(index, 1);
+            }
+        }
+
+        return this;
+    }
+
     displayAll(){
-        return `${this.displayFlop()} | ${this.displayRiver()} | ${this.displayTurn()}`;
+        return `${this.displayFlop()} | ${this.displayTurn()} | ${this.displayRiver()}`;
     }
 
     displayFlop(){
         return displayCards(this.flop);
     }
 
-    displayRiver(){
-        return displayCard(this.river);
-    }
-
     displayTurn(){
         return displayCard(this.turn);
     }
 
+    displayRiver(){
+        return displayCard(this.river);
+    }
+
+    executeAll(){
+        let loops = (!this.flop || !this.flop.length ? 1 : 0)
+                    + (!this.turn ? 1 : 0)
+                    + (!this.river ? 1 : 0);
+
+        for(let i = 0; i < loops; i++) this.executeNext();
+
+        return this;
+    }
+
     executeNext(){
-        if(!this.flop.length) this.executeFlop();
-        else if(!this.river) this.executeRiver();
+        if(!this.flop || !this.flop.length) this.executeFlop();
         else if(!this.turn) this.executeTurn();
+        else if(!this.river) this.executeRiver();
         else throw new Error("#123456789 BAD LOGIC");
+        return this;
     }
 
     executeFlop(){
@@ -248,23 +274,23 @@ class Dealer {
         return this;
     }
 
-    executeRiver(){
-        // flop must be first
-        if(!this.flop) return this; // silent exit
-
-        this.drawTopCard(); // discard one
-        this.river = this.drawTopCard();
-        this.all.push(this.river);
-        return this;
-    }
-
     executeTurn(){
         // flop && river must be first
-        if(!this.flop.length || !this.river) return this; // silent exit
+        if(!this.flop || !this.flop.length) return this; // silent exit
 
         this.drawTopCard(); // discard one
         this.turn = this.drawTopCard();
         this.all.push(this.turn);
+        return this;
+    }
+
+    executeRiver(){
+        // flop must be first
+        if(!this.flop || !this.flop.length || !this.turn) return this; // silent exit
+
+        this.drawTopCard(); // discard one
+        this.river = this.drawTopCard();
+        this.all.push(this.river);
         return this;
     }
 
@@ -387,6 +413,61 @@ function probability(players: Array<Player>, dealer: Dealer){
 /** ******************** HAND CHECKS HELPERS ********************** **/
 /** *************************************************************** **/
 /** *************************************************************** **/
+
+function decipherHand(original: string){
+    let strCards = original.split(",");
+    let cards: Array<Card> = [];
+    for(let i = 0; i < strCards.length; i++) cards.push( decipherCard(strCards[i]) );
+    return cards;
+}
+
+function decipherCard(original: string){
+    let suit: number = 0;
+    let kind: number = 0;
+
+    let text = original.toUpperCase().trim();
+
+    const suits: any = {
+        "S": 1,
+        "C": 2,
+        "D": 3,
+        "H": 4
+    }
+
+    const kinds: any = {
+        "2": 1,
+        "3": 2,
+        "4": 3,
+        "5": 4,
+        "6": 5,
+        "7": 6,
+        "8": 7,
+        "9": 8,
+        "10": 9,
+        "J": 10,
+        "Q": 11,
+        "K": 12,
+        "A": 13
+    };
+
+    let suitKey: string = "";
+    let suitKeys = Object.keys(suits);
+    for(let i = 0; i < suitKeys.length; i++){
+        suitKey = suitKeys[i];
+        if(text.indexOf(suitKey) != -1){
+            suit = suits[suitKey];
+            break;
+        }
+    }
+
+    if(suit == 0) throw new Error("BAD USER INPUT");
+
+    text = text.replace(suitKey, "");
+    if(Object.keys(kinds).indexOf(text) != -1) kind = kinds[text];
+    else throw new Error("BAD USER INPUT");
+
+    return {suit: suit, kind: kind} as Card;
+}
 
 function displayCard(card: Card | null | undefined = null){
     if(!card) return "";
@@ -714,44 +795,78 @@ function royalFlush(cards: Array<Card>){
 /** *************************************************************** **/
 /** *************************************************************** **/
 
+// let p1: Player = new Player(1, "p1");
+// let p2: Player = new Player(2, "p2");
+// let p3: Player = new Player(3, "p3");
+// let p4: Player = new Player(4, "p4");
+// let p5: Player = new Player(5, "p5");
+// let p6: Player = new Player(6, "p6");
+// let d: Dealer = new Dealer(deck);
+// // let players: Array<Player> = [p1, p2];
+// let players: Array<Player> = [p1, p2, p3, p4, p5, p6];
+// players = d.shuffle( Math.floor(Math.random() * 10) ).deal(players);
+//
+// var i = 0;
+// for(var j = 0; j < 3; j++){
+//     console.log("");
+//     if(j == 0) console.log("=============== FLOP =================");
+//     else if(j == 1) console.log("=============== TURN =================");
+//     else if(j == 2) console.log("=============== RIVER =================");
+//
+//     d.executeNext();
+//     players = probability(players, d);
+//     console.log(d.displayAll());
+//     for(i = 0; i < players.length; i++){
+//         console.log(players[i].name, players[i].displayDealtCards(), players[i].displayBestHand(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
+//     }
+// }
 
-let p1: Player = new Player(1, "p1");
-let p2: Player = new Player(2, "p2");
-let p3: Player = new Player(3, "p3");
-let p4: Player = new Player(4, "p4");
-let p5: Player = new Player(5, "p5");
-let p6: Player = new Player(6, "p6");
-let d: Dealer = new Dealer(deck);
-// let players: Array<Player> = [p1, p2];
-let players: Array<Player> = [p1, p2, p3, p4, p5, p6];
-players = d.shuffle( Math.floor(Math.random() * 10) ).deal(players);
 
-var i = 0;
-for(var j = 0; j < 3; j++){
-    console.log("");
-    if(j == 0) console.log("=============== FLOP =================");
-    else if(j == 1) console.log("=============== RIVER =================");
-    else if(j == 2) console.log("=============== TURN =================");
 
-    d.executeNext();
-    players = probability(players, d);
-    console.log(d.displayAll());
-    for(i = 0; i < players.length; i++){
-        console.log(players[i].name, players[i].displayDealtCards(), players[i].displayBestHand(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
-    }
-}
+
+
+
+
+
+
+
+
+
 
 /// TESTING TESTING
 
-// let cards: Array<Card> = [
-//     {suit: suits.diamond, kind: kinds.five},
-//     {suit: suits.club, kind: kinds.four},
-// ];
-// let communal: Array<Card> = [
-//     {suit: suits.diamond, kind: kinds.ten},
-//     {suit: suits.club, kind: kinds.six},
-//     {suit: suits.spade, kind: kinds.king},
-//     {suit: suits.diamond, kind: kinds.king},
-// ];
-//
-// console.log(rankHand(cards, communal));
+let scores: any = {
+    '1': {name: "ROYAL FLUSH", score: 0, perc: 0},
+    '2': {name: "STRAIGHT FLUSH", score: 0, perc: 0},
+    '3': {name: "FOUR OF A KIND", score: 0, perc: 0},
+    '4': {name: "FULL HOUSE", score: 0, perc: 0},
+    '5': {name: "FLUSH", score: 0, perc: 0},
+    '6': {name: "STRAIGHT", score: 0, perc: 0},
+    '7': {name: "THREE OF A KIND", score: 0, perc: 0},
+    '8': {name: "TWO PAIR", score: 0, perc: 0},
+    '9': {name: "ONE PAIR", score: 0, perc: 0},
+    '10': {name: "NOTHING", score: 0, perc: 0},
+};
+
+let cards: Array<Card> = decipherHand("AS, AC");
+let dealer: Dealer;
+let communal: Array<Card>; //decipherHand("6H, JH, 10D, 10S, QS");
+let ranking: Hand;
+
+for(var k = 0; k < 100000; k++){
+    dealer = new Dealer(deck.slice());
+    communal = dealer.burn(cards).shuffle().executeAll().all;
+    ranking = rankHand(cards, communal);
+    if(ranking?.ranking?.rank) {
+        scores[`${<any>ranking?.ranking?.rank}`].score++;
+        scores[`${<any>ranking?.ranking?.rank}`].perc = scores[`${<any>ranking?.ranking?.rank}`].score / k * 100;
+    }
+}
+
+console.log(scores);
+
+// console.log("FROM:");
+// console.log(displayCards(cards), displayCards(communal));
+// console.log("TO:")
+// console.log(ranking?.ranking?.name);
+// console.log(displayCards(ranking.best));
