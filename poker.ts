@@ -24,34 +24,11 @@ const kinds: any = {
     ace: 13
 };
 
-const kindsInv: any = {
-    1: "two",
-    2: "three",
-    3: "four",
-    4: "five",
-    5: "six",
-    6: "seven",
-    7: "eight",
-    8: "nine",
-    9: "ten",
-    10: "jack",
-    11: "queen",
-    12: "king",
-    13: "ace"
-};
-
 const suits: any = {
     spade: 1,
     club: 2,
     diamond: 3,
     heart: 4
-}
-
-const suitsInv: any = {
-    1: "spade",
-    2: "club",
-    3: "diamond",
-    4: "heart"
 }
 
 const deck: Array<Card> = [
@@ -348,22 +325,41 @@ function compareHands(players: Array<Player>, communal: Array<Card>){
     return sortPlayersByHand(players);
 }
 
-function buildIndexTree(cards: Array<Card>){
+function groupBy(cards: Array<Card>, groupBySuits: boolean = true){
     let retObj: any = {};
-    retObj[suits.spade] = {};
-    retObj[suits.club] = {};
-    retObj[suits.diamond] = {};
-    retObj[suits.heart] = {};
+    let i: number;
 
-    for(var i = 0; i < cards.length; i++){
-        retObj[ cards[i].suit ][ cards[i].kind ] = i;
+    if(groupBySuits) {
+        for(const j of Object.keys(suits)) retObj[suits[j]] = [];
+        for(i = 0; i < cards.length; i++) retObj[cards[i].suit].push(cards[i]);
+    }
+    else {
+        for(const j of Object.keys(kinds)) retObj[kinds[j]] = [];
+        for(i = 0; i < cards.length; i++) retObj[cards[i].kind].push(cards[i]);
+    }
+
+    return retObj;
+}
+
+function buildIndexTree(cards: Array<Card>, groupBySuits: boolean = true){
+    let retObj: any = {};
+    let i: number;
+
+    if(groupBySuits) {
+        for(const j of Object.keys(suits)) retObj[suits[j]] = {};
+        for(i = 0; i < cards.length; i++) retObj[cards[i].suit][cards[i].kind] = i;
+    }
+    else {
+        for(const j of Object.keys(kinds)) retObj[kinds[j]] = {};
+        for(i = 0; i < cards.length; i++) retObj[cards[i].kind][cards[i].suit] = i;
     }
 
     return retObj;
 }
 
 function getTreeIndex(tree: any, card: Card){
-    return tree[ card.suit ][ card.kind ] ?? undefined;
+    if(Object.keys(tree).length == 4) return tree[ card.suit ][ card.kind ] ?? undefined;
+    else return tree[ card.kind ][ card.suit ] ?? undefined;
 }
 
 function probability(players: Array<Player>, dealer: Dealer){
@@ -375,9 +371,12 @@ function probability(players: Array<Player>, dealer: Dealer){
         players.forEach((p, i) => p.probabilityOfWinning = (i == 0 ? 1 : 0)); // top player has won
     }
     else {
+        let i: number;
+        let j: number;
+
         // simulate
         if(!dealer.river){
-            for(var i = 0; i < dealer.deck.length; i++){
+            for(i = 0; i < dealer.deck.length; i++){
 
                 // j starts at i because we are looking for combinations not permutation (order is irrelevant)
                 // drawing the (jack of clubs) then the (queen of hearts) is the same as drawing the (queen of hearts) then the (jack of clubs)
@@ -385,7 +384,7 @@ function probability(players: Array<Player>, dealer: Dealer){
                 // So, instead of the # loops being equal to i * j
                 // it will be equal to (i**2 + i)/2 (which is the sum equivalent of a factorial (!i))
 
-                for(var j = (i + 1); j < dealer.deck.length; j++){
+                for(j = (i + 1); j < dealer.deck.length; j++){
                     players = compareHands(players, dealer.all.concat(dealer.deck[i], dealer.deck[j]));
                     players[0].outs.push([dealer.deck[i], dealer.deck[j]]);
                     loops++;
@@ -393,7 +392,7 @@ function probability(players: Array<Player>, dealer: Dealer){
             }
         }
         else {
-            for(var i = 0; i < dealer.deck.length; i++){
+            for(i = 0; i < dealer.deck.length; i++){
                 players = compareHands(players, dealer.all.concat(dealer.deck[i]));
                 players[0].outs.push(dealer.deck[i]);
                 loops++;
@@ -425,7 +424,7 @@ function decipherCard(original: string){
     let suit: number = 0;
     let kind: number = 0;
 
-    let text = original.toUpperCase().trim();
+    let text = original.toUpperCase();
 
     const suits: any = {
         "S": 1,
@@ -462,7 +461,7 @@ function decipherCard(original: string){
 
     if(suit == 0) throw new Error("BAD USER INPUT");
 
-    text = text.replace(suitKey, "");
+    text = text.replace(suitKey, "").trim();
     if(Object.keys(kinds).indexOf(text) != -1) kind = kinds[text];
     else throw new Error("BAD USER INPUT");
 
@@ -516,23 +515,9 @@ function sortByKind(cards: Array<Card>, aceIsHigh: boolean = true){
 }
 
 function groupBySuitSortByKind(cards: Array<Card>, aceIsHigh: boolean = true){
-    let groups: { [key: string]: Array<Card> } = {
-        spade: [],
-        club: [],
-        diamond: [],
-        heart: []
-    };
-
-    cards.forEach(card => {
-        groups[ suitsInv[ card.suit ] ].push(card);
-    });
-
+    let groups = groupBy(cards);
     let retVal: Array<Card> = [];
-    for(const key in groups){
-        retVal = retVal.concat(
-            sortByKind(groups[key], aceIsHigh)
-        );
-    }
+    for(const key in groups) retVal = retVal.concat( sortByKind(groups[key], aceIsHigh) );
     return retVal;
 }
 
@@ -557,13 +542,20 @@ function fillRestOfHand(best: Array<Card>, allCards: Array<Card>){
     return best.slice(0, 5);
 }
 
+/**
+ *
+ * Returns -1 if a is stronger than b
+ * Returns 1 if b is stronger than a
+ * Returns 0 if they are the same
+ *
+ * */
 function compareHighCards(a: Array<Card>, b: Array<Card>){
     a = sortByKind(a);
     b = sortByKind(b);
 
     for(var i = 0; i < Math.max(a.length, b.length); i++){
-        if(!a[i]) return -1; // b.length > a.length
-        if(!b[i]) return 1; // a.length > b.length
+        if(!a[i]) return 1; // b.length > a.length
+        if(!b[i]) return -1; // a.length > b.length
         if(a[i].kind == b[i].kind) continue; // same kind so we skip
 
         return a[i].kind > b[i].kind ? -1 : 1;
@@ -573,25 +565,12 @@ function compareHighCards(a: Array<Card>, b: Array<Card>){
 }
 
 function numOfEachKind(cards: Array<Card>){
-    let scores: any = {
-        ace: {score: 0, cards: []},
-        king: {score: 0, cards: []},
-        queen: {score: 0, cards: []},
-        jack: {score: 0, cards: []},
-        ten: {score: 0, cards: []},
-        nine: {score: 0, cards: []},
-        eight: {score: 0, cards: []},
-        seven: {score: 0, cards: []},
-        six: {score: 0, cards: []},
-        five: {score: 0, cards: []},
-        four: {score: 0, cards: []},
-        three: {score: 0, cards: []},
-        two: {score: 0, cards: []},
-    };
+    let scores: any = {};
+    for(const i in kinds) scores[ kinds[i] ] = {score: 0, cards: []};
 
     cards.forEach(card => {
-        scores[ kindsInv[ card.kind ] ].score++;
-        scores[ kindsInv[ card.kind ] ].cards.push(card);
+        scores[ card.kind ].score++;
+        scores[ card.kind ].cards.push(card);
     });
 
     return scores;
@@ -612,16 +591,12 @@ function xOfAnyKind(x: number, cards: Array<Card>){
 }
 
 function numOfEachSuit(cards: Array<Card>){
-    let scores: any = {
-        spade: {score: 0, cards: []},
-        club: {score: 0, cards: []},
-        diamond: {score: 0, cards: []},
-        heart: {score: 0, cards: []}
-    };
+    let scores: any = {};
+    for(const i in suits) scores[ suits[i] ] = {score: 0, cards: []};
 
     cards.forEach(card => {
-        scores[ suitsInv[ card.suit ] ].score++;
-        scores[ suitsInv[ card.suit ] ].cards.push(card);
+        scores[ card.suit ].score++;
+        scores[ card.suit ].cards.push(card);
     });
 
     return scores;
@@ -637,27 +612,6 @@ function xOfAnySuit(x: number, cards: Array<Card>){
     }
 
     return false;
-}
-
-function longestConsecutiveKindChain(cards: Array<Card>){
-    let prevCard: Card = cards[0];
-    let currChain: Array<Card> = [ prevCard ];
-    let longestChain: Array<Card> = [ prevCard ];
-
-    for(var i = 1; i < cards.length; i++) {
-        if(continuityCheck(prevCard, cards[i])) {
-            currChain.push( cards[i] );
-        }
-        else {
-            currChain = [ cards[i] ];
-        }
-
-        if(currChain.length > longestChain.length) longestChain = currChain;
-
-        prevCard = cards[i];
-    }
-
-    return longestChain;
 }
 
 /** *************************************************************** **/
@@ -695,13 +649,24 @@ function threeOfAKind(cards: Array<Card>){
 }
 
 function straight(cards: Array<Card>){
-    cards = sortByKind(cards);
-    let chain: Array<Card> | boolean = longestConsecutiveKindChain(cards);
-    if(!!chain && chain.length >= 5) return chain;
+    let groupByKind = groupBy(cards, false);
+    groupByKind[0] = groupByKind[ kinds.ace ]; // also put aces at the start for potential wheel
+    let currChain: Array<Card> = groupByKind[ kinds.ace ].length ? [ groupByKind[ kinds.ace ][0] ] : [];
 
-    cards = sortByKind(cards, false);
-    chain = longestConsecutiveKindChain(cards);
-    if(!!chain && chain.length >= 5) return chain;
+    // start at kings and decrement i because aces should be accounted for above
+    for(var i = kinds.king; i > 0; i--){
+        if(groupByKind[i-1].length && groupByKind[i].length) {
+            currChain.push( groupByKind[i][0] );
+        }
+        else if(groupByKind[i].length){
+            currChain = [ groupByKind[i][0] ];
+        }
+        else {
+            currChain = [];
+        }
+
+        if(currChain.length >= 5) return currChain;
+    }
 
     return false;
 }
@@ -835,35 +800,52 @@ function royalFlush(cards: Array<Card>){
 
 /// TESTING TESTING
 
-let scores: any = {
-    '1': {name: "ROYAL FLUSH", score: 0, perc: 0},
-    '2': {name: "STRAIGHT FLUSH", score: 0, perc: 0},
-    '3': {name: "FOUR OF A KIND", score: 0, perc: 0},
-    '4': {name: "FULL HOUSE", score: 0, perc: 0},
-    '5': {name: "FLUSH", score: 0, perc: 0},
-    '6': {name: "STRAIGHT", score: 0, perc: 0},
-    '7': {name: "THREE OF A KIND", score: 0, perc: 0},
-    '8': {name: "TWO PAIR", score: 0, perc: 0},
-    '9': {name: "ONE PAIR", score: 0, perc: 0},
-    '10': {name: "NOTHING", score: 0, perc: 0},
-};
-
-let cards: Array<Card> = decipherHand("AS, AC");
+// let scores: any = {
+//     '1': {name: "ROYAL FLUSH", score: 0, perc: 0},
+//     '2': {name: "STRAIGHT FLUSH", score: 0, perc: 0},
+//     '3': {name: "FOUR OF A KIND", score: 0, perc: 0},
+//     '4': {name: "FULL HOUSE", score: 0, perc: 0},
+//     '5': {name: "FLUSH", score: 0, perc: 0},
+//     '6': {name: "STRAIGHT", score: 0, perc: 0},
+//     '7': {name: "THREE OF A KIND", score: 0, perc: 0},
+//     '8': {name: "TWO PAIR", score: 0, perc: 0},
+//     '9': {name: "ONE PAIR", score: 0, perc: 0},
+//     '10': {name: "NOTHING", score: 0, perc: 0},
+// };
+let hands: any = {};
+let hand: Array<Card>; // = decipherHand("AS, 6C");
 let dealer: Dealer;
-let communal: Array<Card>; //decipherHand("6H, JH, 10D, 10S, QS");
+let communal: Array<Card>; // = decipherHand("4D, 2C, 6H, jh, 6d");
 let ranking: Hand;
 
-for(var k = 0; k < 100000; k++){
-    dealer = new Dealer(deck.slice());
-    communal = dealer.burn(cards).shuffle().executeAll().all;
-    ranking = rankHand(cards, communal);
-    if(ranking?.ranking?.rank) {
-        scores[`${<any>ranking?.ranking?.rank}`].score++;
-        scores[`${<any>ranking?.ranking?.rank}`].perc = scores[`${<any>ranking?.ranking?.rank}`].score / k * 100;
+for(var i = 0; i < deck.length; i++){
+    for(var j = (i + 1); j < deck.length; j++){
+        hand = [deck[i], deck[j]];
+        let h = displayCards(hand);
+        if(!hands[h]) hands[h] = {'1':{name:"ROYAL FLUSH", score:0, perc:0},'2':{name:"STRAIGHT FLUSH", score:0, perc:0},'3':{name:"FOUR OF A KIND", score:0, perc:0},'4':{name:"FULL HOUSE", score:0, perc:0},'5':{name:"FLUSH", score:0, perc:0},'6':{name:"STRAIGHT", score:0, perc:0},'7':{name:"THREE OF A KIND", score:0, perc:0},'8':{name:"TWO PAIR", score:0, perc:0},'9':{name:"ONE PAIR", score:0, perc:0},'10':{name:"NOTHING", score:0, perc:0}};
+        for(var k = 0; k < 1000; k++){
+            dealer = new Dealer(deck.slice());
+            communal = dealer.burn(hand).shuffle().executeAll().all;
+            ranking = rankHand(hand, communal);
+            if(ranking?.ranking?.rank) {
+                hands[h][`${<any>ranking?.ranking?.rank}`].score++;
+                hands[h][`${<any>ranking?.ranking?.rank}`].perc = hands[h][`${<any>ranking?.ranking?.rank}`].score / k * 100;
+            }
+        }
     }
 }
 
-console.log(scores);
+
+// for(var k = 0; k < 100000; k++){
+//     dealer = new Dealer(deck.slice());
+//     communal = dealer.burn(hand).shuffle().executeAll().all;
+//     ranking = rankHand(hand, communal);
+//     if(ranking?.ranking?.rank) {
+//         scores[`${<any>ranking?.ranking?.rank}`].score++;
+//         scores[`${<any>ranking?.ranking?.rank}`].perc = scores[`${<any>ranking?.ranking?.rank}`].score / k * 100;
+//     }
+// }
+console.log(hands);
 
 // console.log("FROM:");
 // console.log(displayCards(cards), displayCards(communal));
