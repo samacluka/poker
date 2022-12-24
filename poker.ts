@@ -86,7 +86,7 @@ const deck: Array<Card> = [
     {suit: suits.heart, kind: kinds.ace}
 ];
 
-let handRankings: Array<HandRanking> = [
+const handRankings: Array<HandRanking> = [
     {name: "ROYAL FLUSH", rank: 1, check: royalFlush},
     {name: "STRAIGHT FLUSH", rank: 2, check: straightFlush},
     {name: "FOUR OF A KIND", rank: 3, check: fourOfAKind},
@@ -756,6 +756,33 @@ function royalFlush(cards: Array<Card>){
 
 /** *************************************************************** **/
 /** *************************************************************** **/
+/** ***************************** CSV ***************************** **/
+/** *************************************************************** **/
+/** *************************************************************** **/
+
+function toCSV(data: any) {
+    // Empty array for storing the values
+    let csvRows = [];
+
+    // Headers is basically a keys of an
+    // object which is id, name, and
+    // profession
+    const headers = Object.keys(handRankings).map((k: any) => handRankings[k].name);
+
+    csvRows.push("HAND," + headers.join(','));
+    for(const hand in data){
+        csvRows.push(
+             `${hand},` + Object.keys(data[hand]).map((k: any) => data[hand][k].perc.toFixed(2) ).join(',')
+        );
+    }
+
+    // Returning the array joining with new line
+    let csvStr = csvRows.join('\n');
+    console.log(csvStr);
+}
+
+/** *************************************************************** **/
+/** *************************************************************** **/
 /** ************************* PLAY ZONE *************************** **/
 /** *************************************************************** **/
 /** *************************************************************** **/
@@ -817,23 +844,26 @@ let hand: Array<Card>; // = decipherHand("AS, 6C");
 let dealer: Dealer;
 let communal: Array<Card>; // = decipherHand("4D, 2C, 6H, jh, 6d");
 let ranking: Hand;
+let numSimulationsPerHand: number = 100000;
 
 for(var i = 0; i < deck.length; i++){
     for(var j = (i + 1); j < deck.length; j++){
         hand = [deck[i], deck[j]];
         let h = displayCards(hand);
         if(!hands[h]) hands[h] = {'1':{name:"ROYAL FLUSH", score:0, perc:0},'2':{name:"STRAIGHT FLUSH", score:0, perc:0},'3':{name:"FOUR OF A KIND", score:0, perc:0},'4':{name:"FULL HOUSE", score:0, perc:0},'5':{name:"FLUSH", score:0, perc:0},'6':{name:"STRAIGHT", score:0, perc:0},'7':{name:"THREE OF A KIND", score:0, perc:0},'8':{name:"TWO PAIR", score:0, perc:0},'9':{name:"ONE PAIR", score:0, perc:0},'10':{name:"NOTHING", score:0, perc:0}};
-        for(var k = 0; k < 1000; k++){
+        for(var k = 0; k < numSimulationsPerHand; k++){
             dealer = new Dealer(deck.slice());
             communal = dealer.burn(hand).shuffle().executeAll().all;
             ranking = rankHand(hand, communal);
             if(ranking?.ranking?.rank) {
                 hands[h][`${<any>ranking?.ranking?.rank}`].score++;
-                hands[h][`${<any>ranking?.ranking?.rank}`].perc = hands[h][`${<any>ranking?.ranking?.rank}`].score / k * 100;
+                if(k != 0) hands[h][`${<any>ranking?.ranking?.rank}`].perc = hands[h][`${<any>ranking?.ranking?.rank}`].score / k * 100;
+                else hands[h][`${<any>ranking?.ranking?.rank}`].perc = 0;
             }
         }
     }
 }
+toCSV(hands);
 
 
 // for(var k = 0; k < 100000; k++){
@@ -845,7 +875,6 @@ for(var i = 0; i < deck.length; i++){
 //         scores[`${<any>ranking?.ranking?.rank}`].perc = scores[`${<any>ranking?.ranking?.rank}`].score / k * 100;
 //     }
 // }
-console.log(hands);
 
 // console.log("FROM:");
 // console.log(displayCards(cards), displayCards(communal));
