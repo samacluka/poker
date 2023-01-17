@@ -1,4 +1,5 @@
 import {Card, HandRanking, Hand} from "./models";
+import { writeFile } from 'fs';
 
 /** *************************************************************** **/
 /** *************************************************************** **/
@@ -366,7 +367,7 @@ function probability(players: Array<Player>, dealer: Dealer){
     let loops: number = 0;
     players.forEach(p => p.outs = []); // clear all previous calculations
 
-    if(dealer.turn){ // if the turn has been shown
+    if(dealer.river){ // if the turn has been shown
         players = compareHands(players, dealer.all);
         players.forEach((p, i) => p.probabilityOfWinning = (i == 0 ? 1 : 0)); // top player has won
     }
@@ -375,7 +376,7 @@ function probability(players: Array<Player>, dealer: Dealer){
         let j: number;
 
         // simulate
-        if(!dealer.river){
+        if(!dealer.turn){
             for(i = 0; i < dealer.deck.length; i++){
 
                 // j starts at i because we are looking for combinations not permutation (order is irrelevant)
@@ -772,13 +773,14 @@ function toCSV(data: any) {
     csvRows.push("HAND," + headers.join(','));
     for(const hand in data){
         csvRows.push(
-             `${hand},` + Object.keys(data[hand]).map((k: any) => data[hand][k].perc.toFixed(2) ).join(',')
+             `${hand}, ` + Object.keys(data[hand]).map((k: any) => data[hand][k].perc.toFixed(2) ).join(',')
         );
     }
 
     // Returning the array joining with new line
     let csvStr = csvRows.join('\n');
-    console.log(csvStr);
+    // console.log(csvStr);
+    writeFile("C:\\temp\\poker.csv", csvStr, 'utf8', (err) => { if(err) console.log(err); });
 }
 
 /** *************************************************************** **/
@@ -844,7 +846,9 @@ let hand: Array<Card>; // = decipherHand("AS, 6C");
 let dealer: Dealer;
 let communal: Array<Card>; // = decipherHand("4D, 2C, 6H, jh, 6d");
 let ranking: Hand;
-let numSimulationsPerHand: number = 100000;
+let numSimulationsPerHand: number = 1000000;
+
+console.log(`Running ${ ((deck.length * deck.length + deck.length)/2) * numSimulationsPerHand } simulations...`);
 
 for(var i = 0; i < deck.length; i++){
     for(var j = (i + 1); j < deck.length; j++){
@@ -857,8 +861,7 @@ for(var i = 0; i < deck.length; i++){
             ranking = rankHand(hand, communal);
             if(ranking?.ranking?.rank) {
                 hands[h][`${<any>ranking?.ranking?.rank}`].score++;
-                if(k != 0) hands[h][`${<any>ranking?.ranking?.rank}`].perc = hands[h][`${<any>ranking?.ranking?.rank}`].score / k * 100;
-                else hands[h][`${<any>ranking?.ranking?.rank}`].perc = 0;
+                hands[h][`${<any>ranking?.ranking?.rank}`].perc = hands[h][`${<any>ranking?.ranking?.rank}`].score / numSimulationsPerHand * 100;
             }
         }
     }
