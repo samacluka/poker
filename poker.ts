@@ -403,6 +403,12 @@ function probability(players: Array<Player>, dealer: Dealer){
         players.forEach(p => {
             p.probabilityOfWinning = p.outs.length / loops;
         });
+
+        // set best hands to actually dealt values
+        // otherwise player.hand will be of hypothetical
+        // values from the simulations
+        // but in this function we are only concerned with the probabilities
+        players = compareHands(players, dealer.all);
     }
 
     return sortPlayersByProbability(players);
@@ -427,35 +433,35 @@ function decipherCard(original: string){
 
     let text = original.toUpperCase();
 
-    const suits: any = {
-        "S": 1,
-        "C": 2,
-        "D": 3,
-        "H": 4
+    const _suits: any = {
+        "S": suits.spade,
+        "C": suits.club,
+        "D": suits.diamond,
+        "H": suits.heart
     }
 
-    const kinds: any = {
-        "2": 1,
-        "3": 2,
-        "4": 3,
-        "5": 4,
-        "6": 5,
-        "7": 6,
-        "8": 7,
-        "9": 8,
-        "10": 9,
-        "J": 10,
-        "Q": 11,
-        "K": 12,
-        "A": 13
+    const _kinds: any = {
+        "2": kinds.two,
+        "3": kinds.three,
+        "4": kinds.four,
+        "5": kinds.five,
+        "6": kinds.six,
+        "7": kinds.seven,
+        "8": kinds.eight,
+        "9": kinds.nine,
+        "10": kinds.ten,
+        "J": kinds.jack,
+        "Q": kinds.queen,
+        "K": kinds.king,
+        "A": kinds.ace
     };
 
     let suitKey: string = "";
-    let suitKeys = Object.keys(suits);
+    let suitKeys = Object.keys(_suits);
     for(let i = 0; i < suitKeys.length; i++){
         suitKey = suitKeys[i];
         if(text.indexOf(suitKey) != -1){
-            suit = suits[suitKey];
+            suit = _suits[suitKey];
             break;
         }
     }
@@ -463,7 +469,7 @@ function decipherCard(original: string){
     if(suit == 0) throw new Error("BAD USER INPUT");
 
     text = text.replace(suitKey, "").trim();
-    if(Object.keys(kinds).indexOf(text) != -1) kind = kinds[text];
+    if(Object.keys(_kinds).indexOf(text) != -1) kind = _kinds[text];
     else throw new Error("BAD USER INPUT");
 
     return {suit: suit, kind: kind} as Card;
@@ -582,7 +588,8 @@ function xOfAnyKind(x: number, cards: Array<Card>){
 
     // best scores starts with aces
     // we can assume the first x of a kind we hit is the best x of a kind
-    for(const key in scores){
+    let keys = Object.keys(scores).sort((a,b) => parseInt(a) > parseInt(b) ? 1 : -1).reverse();
+    for(const key of keys){
         if(scores[ key ].score >= x) {
             return fillRestOfHand(scores[ key ].cards, cards);
         }
@@ -633,7 +640,8 @@ function twoPair(cards: Array<Card>){
     let scores: any = numOfEachKind(cards);
     let best: Array<Card> = [];
 
-    for(const key in scores){
+    let keys = Object.keys(scores).sort((a,b) => parseInt(a) > parseInt(b) ? 1 : -1).reverse();
+    for(const key of keys){
         if(scores[ key ].score == 2){
             best = best.concat(scores[key].cards);
             if ((best.length / 2) >= 2) {
@@ -681,8 +689,10 @@ function fullHouse(cards: Array<Card>){
     let pair: Array<Card> = [];
     let threeOfAKind: Array<Card> = [];
 
+    // reverse order of scores so that we iterate from aces to twos
+    let keys = Object.keys(scores).sort((a,b) => parseInt(a) > parseInt(b) ? 1 : -1).reverse();
     // we use the compareHighCards function in case of multiple pairs / threeOfAKind to get the best one
-    for(const key in scores){
+    for(const key of keys){
         if(
             scores[ key ].score == 3 // don't have to worry about >= 3 bc then it would be four of a kind (which is a better hand)
             && compareHighCards(threeOfAKind, scores[ key ].cards) == 1 // check to see if its worth replacing - in the case of multiple three of a kinds
@@ -761,9 +771,10 @@ function royalFlush(cards: Array<Card>){
 /** *************************************************************** **/
 /** *************************************************************** **/
 
+// this should probably be streamed to avoid memory issues - but yolo 
 function toCSV(data: any) {
     // Empty array for storing the values
-    let csvRows = [];
+    let csvRows: any = [];
 
     // Headers is basically a keys of an
     // object which is id, name, and
@@ -789,65 +800,52 @@ function toCSV(data: any) {
 /** *************************************************************** **/
 /** *************************************************************** **/
 
-// let p1: Player = new Player(1, "p1");
-// let p2: Player = new Player(2, "p2");
-// let p3: Player = new Player(3, "p3");
-// let p4: Player = new Player(4, "p4");
-// let p5: Player = new Player(5, "p5");
-// let p6: Player = new Player(6, "p6");
-// let d: Dealer = new Dealer(deck);
-// // let players: Array<Player> = [p1, p2];
-// let players: Array<Player> = [p1, p2, p3, p4, p5, p6];
-// players = d.shuffle( Math.floor(Math.random() * 10) ).deal(players);
-//
-// var i = 0;
-// for(var j = 0; j < 3; j++){
-//     console.log("");
-//     if(j == 0) console.log("=============== FLOP =================");
-//     else if(j == 1) console.log("=============== TURN =================");
-//     else if(j == 2) console.log("=============== RIVER =================");
-//
-//     d.executeNext();
-//     players = probability(players, d);
-//     console.log(d.displayAll());
-//     for(i = 0; i < players.length; i++){
-//         console.log(players[i].name, players[i].displayDealtCards(), players[i].displayBestHand(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
-//     }
-// }
+/**
+ * 
+ * Simulate one round of texas holdem with 6 players
+ * 
+ */
 
+let p1: Player = new Player(1, "p1");
+let p2: Player = new Player(2, "p2");
+let p3: Player = new Player(3, "p3");
+let p4: Player = new Player(4, "p4");
+let p5: Player = new Player(5, "p5");
+let p6: Player = new Player(6, "p6");
+let d: Dealer = new Dealer(deck);
+let players: Array<Player> = [p1, p2, p3, p4, p5, p6];
+players = d.shuffle( Math.floor(Math.random() * 10) ).deal(players);
 
+var i = 0;
+for(var j = 0; j < 3; j++){
+    console.log("");
+    if(j == 0) console.log("=============== FLOP =================");
+    else if(j == 1) console.log("=============== TURN =================");
+    else if(j == 2) console.log("=============== RIVER =================");
 
+    d.executeNext();
+    players = probability(players, d);
+    console.log(d.displayAll());
+    for(i = 0; i < players.length; i++){
+        console.log(players[i].name, players[i].displayDealtCards(), players[i].displayBestHand(), players[i].hand?.ranking?.name, `${(players[i].probabilityOfWinning ?? 0)*100}%`);
+    }
+}
 
+/**
+ * 
+ * simulate numSimulationsPerHand for every possible two card combination
+ * and dump to a csv file
+ * 
+ */
 
-
-
-
-
-
-
-
-
-/// TESTING TESTING
-
-// let scores: any = {
-//     '1': {name: "ROYAL FLUSH", score: 0, perc: 0},
-//     '2': {name: "STRAIGHT FLUSH", score: 0, perc: 0},
-//     '3': {name: "FOUR OF A KIND", score: 0, perc: 0},
-//     '4': {name: "FULL HOUSE", score: 0, perc: 0},
-//     '5': {name: "FLUSH", score: 0, perc: 0},
-//     '6': {name: "STRAIGHT", score: 0, perc: 0},
-//     '7': {name: "THREE OF A KIND", score: 0, perc: 0},
-//     '8': {name: "TWO PAIR", score: 0, perc: 0},
-//     '9': {name: "ONE PAIR", score: 0, perc: 0},
-//     '10': {name: "NOTHING", score: 0, perc: 0},
-// };
 let hands: any = {};
 let hand: Array<Card>; // = decipherHand("AS, 6C");
 let dealer: Dealer;
 let communal: Array<Card>; // = decipherHand("4D, 2C, 6H, jh, 6d");
 let ranking: Hand;
-let numSimulationsPerHand: number = 1000000;
+let numSimulationsPerHand: number = 1;
 
+// sum-equivalent of a factorial
 console.log(`Running ${ ((deck.length * deck.length + deck.length)/2) * numSimulationsPerHand } simulations...`);
 
 for(var i = 0; i < deck.length; i++){
@@ -866,21 +864,4 @@ for(var i = 0; i < deck.length; i++){
         }
     }
 }
-toCSV(hands);
-
-
-// for(var k = 0; k < 100000; k++){
-//     dealer = new Dealer(deck.slice());
-//     communal = dealer.burn(hand).shuffle().executeAll().all;
-//     ranking = rankHand(hand, communal);
-//     if(ranking?.ranking?.rank) {
-//         scores[`${<any>ranking?.ranking?.rank}`].score++;
-//         scores[`${<any>ranking?.ranking?.rank}`].perc = scores[`${<any>ranking?.ranking?.rank}`].score / k * 100;
-//     }
-// }
-
-// console.log("FROM:");
-// console.log(displayCards(cards), displayCards(communal));
-// console.log("TO:")
-// console.log(ranking?.ranking?.name);
-// console.log(displayCards(ranking.best));
+// toCSV(hands);
