@@ -338,7 +338,7 @@ const handRankings: Array<HandRanking> = [
 /** *************************************************************** **/
 /** *************************************************************** **/
 
-function rankHand(cards: Array<Card>, communal: Array<Card>){
+export function rankHand(cards: Array<Card>, communal: Array<Card>){
     let res: Array<Card> | boolean;
     for(let i = 0; i < handRankings.length; i++){
         res = handRankings[i].check.call(that, cards.concat(communal));
@@ -574,16 +574,16 @@ export function displayCards(cards: Array<Card> = []){
 /** *************************************************************** **/
 /** *************************************************************** **/
 
-function continuityCheck(a: Card, b: Card): boolean {
+export function continuityCheck(a: Card, b: Card): boolean {
     return (Math.abs(a?.kind - b?.kind) == 1 || Math.abs(a?.kind % kinds.ace - b?.kind % kinds.ace) == 1);
 }
 
-function sortByKind(cards: Array<Card>, aceIsHigh: boolean = true): Array<Card> {
+export function sortByKind(cards: Array<Card>, aceIsHigh: boolean = true): Array<Card> {
     if(aceIsHigh) return cards.sort((a: Card, b: Card) => a.kind < b.kind ? 1 : -1);
     else return cards.sort((a: Card, b: Card) => (a.kind % kinds.ace) < (b.kind % kinds.ace) ? 1 : -1);
 }
 
-function groupBySuitSortByKind(cards: Array<Card>, aceIsHigh: boolean = true): Array<Card> {
+export function groupBySuitSortByKind(cards: Array<Card>, aceIsHigh: boolean = true): Array<Card> {
     let groupBySuit = groupBy(cards, true);
     let retVal: Array<Card> = [];
     for(const suit in groupBySuit) retVal = retVal.concat( sortByKind(groupBySuit[suit], aceIsHigh) );
@@ -831,7 +831,7 @@ export function royalFlush(cards: Array<Card>): Array<Card> | boolean {
 /** *************************************************************** **/
 
 // this should probably be streamed to avoid memory issues - but yolo 
-function toCSV(data: any) {
+export function toCSV(data: any) {
     // Empty array for storing the values
     let csvRows: any = [];
 

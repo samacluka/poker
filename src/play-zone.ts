@@ -1,4 +1,4 @@
-import {Hand} from "../src/models";
+import {Hand, Card} from "../src/models";
 
 import {
     deck,
@@ -8,6 +8,10 @@ import {
 
     decipherHand,
     probability,
+
+    displayCards,
+    rankHand,
+    toCSV
 } from '../src/poker';
 
 /** *************************************************************** **/
@@ -54,46 +58,46 @@ import {
  *
  */
 
-// let hands: any = {};
-// let hand: Array<Card>; // = decipherHand("AS, 6C");
-// let dealer: Dealer;
-// let communal: Array<Card>; // = decipherHand("4D, 2C, 6H, jh, 6d");
-// let ranking: Hand;
-// let numSimulationsPerHand: number = 1;
+let hands: any = {};
+let hand: Array<Card>; // = decipherHand("AS, 6C");
+let dealer: Dealer;
+let communal: Array<Card>; // = decipherHand("4D, 2C, 6H, jh, 6d");
+let ranking: Hand;
+let numSimulationsPerHand: number = 10000;
 
-// // sum-equivalent of a factorial
-// console.log(`Running ${ ((deck.length * deck.length + deck.length)/2) * numSimulationsPerHand } simulations...`);
+// sum-equivalent of a factorial
+console.log(`Running ${ ((deck.length * deck.length + deck.length)/2) * numSimulationsPerHand } simulations...`);
 
-// for(var i = 0; i < deck.length; i++){
-//     for(var j = (i + 1); j < deck.length; j++){
-//         hand = [deck[i], deck[j]];
-//         let h = displayCards(hand);
-//         if(!hands[h]) hands[h] = {'1':{name:"ROYAL FLUSH", score:0, perc:0},'2':{name:"STRAIGHT FLUSH", score:0, perc:0},'3':{name:"FOUR OF A KIND", score:0, perc:0},'4':{name:"FULL HOUSE", score:0, perc:0},'5':{name:"FLUSH", score:0, perc:0},'6':{name:"STRAIGHT", score:0, perc:0},'7':{name:"THREE OF A KIND", score:0, perc:0},'8':{name:"TWO PAIR", score:0, perc:0},'9':{name:"ONE PAIR", score:0, perc:0},'10':{name:"NOTHING", score:0, perc:0}};
-//         for(var k = 0; k < numSimulationsPerHand; k++){
-//             dealer = new Dealer(deck.slice());
-//             communal = dealer.burn(hand).shuffle().executeAll().all;
-//             ranking = rankHand(hand, communal);
-//             if(ranking?.ranking?.rank) {
-//                 hands[h][`${<any>ranking?.ranking?.rank}`].score++;
-//                 hands[h][`${<any>ranking?.ranking?.rank}`].perc = hands[h][`${<any>ranking?.ranking?.rank}`].score / numSimulationsPerHand * 100;
-//             }
-//         }
-//     }
-// }
-// toCSV(hands);
-
-console.log("===========================================================================");
-console.log("----------------------------- SITUATION TEST ------------------------------");
-console.log("===========================================================================");
-
-let ch1: Hand = {cards: decipherHand("AC, AD"), best: [], ranking: null};
-let ch2: Hand = {cards: decipherHand("KH, AH"), best: [], ranking: null};
-let cp1: Player = new Player(1, "p1", ch1);
-let cp2: Player = new Player(2, "p2", ch2);
-let cd: Dealer = (new Dealer(deck)).shuffle().burn(ch1.cards).burn(ch2.cards).setFlop(decipherHand("QH, JH, AS"));
-let cplayers: Array<Player> = [cp1, cp2];
-cplayers = probability(cplayers, cd);
-console.log(cd.displayAll());
-for(const cplayer of cplayers) {
-    console.log(cplayer.name, cplayer.displayDealtCards(), cplayer.displayBestHand(), cplayer.hand?.ranking?.name, `${(cplayer.probabilityOfWinning ?? 0)*100}%`);
+for(let i = 0; i < deck.length; i++){
+    for(let j = (i + 1); j < deck.length; j++){
+        hand = [deck[i], deck[j]];
+        let h = displayCards(hand);
+        if(!hands[h]) hands[h] = {'1':{name:"ROYAL FLUSH", score:0, perc:0},'2':{name:"STRAIGHT FLUSH", score:0, perc:0},'3':{name:"FOUR OF A KIND", score:0, perc:0},'4':{name:"FULL HOUSE", score:0, perc:0},'5':{name:"FLUSH", score:0, perc:0},'6':{name:"STRAIGHT", score:0, perc:0},'7':{name:"THREE OF A KIND", score:0, perc:0},'8':{name:"TWO PAIR", score:0, perc:0},'9':{name:"ONE PAIR", score:0, perc:0},'10':{name:"NOTHING", score:0, perc:0}};
+        for(let k = 0; k < numSimulationsPerHand; k++){
+            dealer = new Dealer(deck.slice());
+            communal = dealer.burn(hand).shuffle().executeAll().all;
+            ranking = rankHand(hand, communal);
+            if(ranking?.ranking?.rank) {
+                hands[h][`${<any>ranking?.ranking?.rank}`].score++;
+                hands[h][`${<any>ranking?.ranking?.rank}`].perc = hands[h][`${<any>ranking?.ranking?.rank}`].score / numSimulationsPerHand * 100;
+            }
+        }
+    }
 }
+toCSV(hands);
+
+// console.log("===========================================================================");
+// console.log("----------------------------- SITUATION TEST ------------------------------");
+// console.log("===========================================================================");
+//
+// let ch1: Hand = {cards: decipherHand("AC, AD"), best: [], ranking: null};
+// let ch2: Hand = {cards: decipherHand("KH, AH"), best: [], ranking: null};
+// let cp1: Player = new Player(1, "p1", ch1);
+// let cp2: Player = new Player(2, "p2", ch2);
+// let cd: Dealer = (new Dealer(deck)).shuffle().burn(ch1.cards).burn(ch2.cards).setFlop(decipherHand("QH, JH, AS"));
+// let cplayers: Array<Player> = [cp1, cp2];
+// cplayers = probability(cplayers, cd);
+// console.log(cd.displayAll());
+// for(const cplayer of cplayers) {
+//     console.log(cplayer.name, cplayer.displayDealtCards(), cplayer.displayBestHand(), cplayer.hand?.ranking?.name, `${(cplayer.probabilityOfWinning ?? 0)*100}%`);
+// }
