@@ -118,7 +118,7 @@ export class Dealer {
     }
 
     executeAll(){
-        let loops = (!this.flop || !this.flop.length ? 1 : 0)
+        let loops = (!this.flop?.length ? 1 : 0)
                     + (!this.turn ? 1 : 0)
                     + (!this.river ? 1 : 0);
 
@@ -128,7 +128,7 @@ export class Dealer {
     }
 
     executeNext(){
-        if(!this.flop || !this.flop.length) this.executeFlop();
+        if(!this.flop?.length) this.executeFlop();
         else if(!this.turn) this.executeTurn();
         else if(!this.river) this.executeRiver();
         else throw new Error("#123456789 BAD LOGIC");
@@ -155,7 +155,7 @@ export class Dealer {
 
     executeTurn(){
         // flop must be first
-        if(!this.flop || !this.flop.length) return this; // silent exit
+        if(!this.flop?.length) return this; // silent exit
 
         this.drawTopCard(); // discard one
         this.turn = this.drawTopCard();
@@ -165,7 +165,7 @@ export class Dealer {
 
     executeRiver(){
         // flop && turn must be first
-        if(!this.flop || !this.flop.length || !this.turn) return this; // silent exit
+        if(!this.flop?.length || !this.turn) return this; // silent exit
 
         this.drawTopCard(); // discard one
         this.river = this.drawTopCard();
@@ -194,7 +194,7 @@ export class Dealer {
 
     setTurn(card: Card, burnTopCard: boolean = false){
         // flop must be first
-        if(!this.flop || !this.flop.length) return this; // silent exit
+        if(!this.flop?.length) return this; // silent exit
 
         if(burnTopCard){
             let numBurned: number = 0;
@@ -213,7 +213,7 @@ export class Dealer {
 
     setRiver(card: Card, burnTopCard: boolean = false){
         // flop && turn must be first
-        if(!this.flop || !this.flop.length || !this.turn) return this; // silent exit
+        if(!this.flop?.length || !this.turn) return this; // silent exit
 
         if(burnTopCard){
             let numBurned: number = 0;
@@ -753,30 +753,28 @@ export function fullHouse(cards: Array<Card>): Array<Card> | boolean {
 
     // reverse order of scores so that we iterate from aces to twos
     let keys = Object.keys(scores).sort((a,b) => parseInt(a) > parseInt(b) ? 1 : -1).reverse();
-    // we use the compareHighCards function in case of multiple pairs / threeOfAKind to get the best one
+
     for(const key of keys){
-        if(
-            scores[ key ].score == 3 // don't have to worry about >= 3 bc then it would be four of a kind (which is a better hand)
-            && compareHighCards(threeOfAKind, scores[ key ].cards) == 1 // check to see if its worth replacing - in the case of multiple three of a kinds
-        ){
+        // don't have to worry about >= 3 bc then it would be four of a kind (which is a better hand)
+        if( scores[ key ].score == 3 ){
+            if( threeOfAKind.length == 0 ) {
+                threeOfAKind = scores[key].cards;
+            }
+
             // if the threeOfAKind variable was already populated (there are multiple three of a kinds in this hand)
             // check to see if its worth putting in the pair variable
-            if(!!threeOfAKind && compareHighCards(threeOfAKind, pair) == -1){
-                pair = threeOfAKind.slice(0, 2);
+            else if(!!threeOfAKind && compareHighCards(scores[ key ].cards, pair) == -1){
+                pair = scores[ key ].cards.slice(0, 2);
             }
-            threeOfAKind = scores[ key ].cards;
         }
 
-        if(
-            scores[ key ].score == 2
-            && compareHighCards(pair, scores[ key ].cards) == 1 // double check its worth replacing with the current pair
-        ){
+        if( pair.length == 0 && scores[ key ].score == 2 ){
             pair = scores[key].cards;
         }
     }
 
     // return hand
-    return pair.length && threeOfAKind.length ? pair.concat(threeOfAKind) : false;
+    return pair.length > 0 && threeOfAKind.length > 0 ? pair.concat(threeOfAKind) : false;
 }
 
 export function fourOfAKind(cards: Array<Card>): Array<Card> | boolean {

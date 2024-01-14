@@ -117,6 +117,27 @@ const royalFlushCards: Card[] = [
     // Add more cards as needed
 ];
 
+// More Full Houses
+const multipleThreeOfAKinds: Card[] = [
+    { suit: suits.heart, kind: kinds.ten },
+    { suit: suits.heart, kind: kinds.ten },
+    { suit: suits.heart, kind: kinds.ten },
+    { suit: suits.heart, kind: kinds.king },
+    { suit: suits.heart, kind: kinds.king },
+    { suit: suits.heart, kind: kinds.ace },
+    { suit: suits.heart, kind: kinds.ace },
+    { suit: suits.heart, kind: kinds.ace }
+];
+
+const replacePairWithTwoFromThreeOfAKind: Card[] = [
+    { suit: suits.heart, kind: kinds.king },
+    { suit: suits.heart, kind: kinds.king },
+    { suit: suits.heart, kind: kinds.king },
+    { suit: suits.heart, kind: kinds.ace },
+    { suit: suits.heart, kind: kinds.ace },
+    { suit: suits.heart, kind: kinds.ace }
+];
+
 
 describe('Poker Hand Tests', () => {
     test('Nothing', () => {
@@ -208,6 +229,21 @@ describe('Poker Hand Tests', () => {
         expect(fullHouse(fourOfAKindCards)).toEqual(false);
         expect(fullHouse(straightFlushCards)).toEqual(false);
         expect(fullHouse(royalFlushCards)).toEqual(false);
+
+        expect(fullHouse(multipleThreeOfAKinds)).toEqual([
+            { suit: suits.heart, kind: kinds.king },
+            { suit: suits.heart, kind: kinds.king },
+            { suit: suits.heart, kind: kinds.ace },
+            { suit: suits.heart, kind: kinds.ace },
+            { suit: suits.heart, kind: kinds.ace }
+        ]);
+        expect(fullHouse(replacePairWithTwoFromThreeOfAKind)).toEqual([
+            { suit: suits.heart, kind: kinds.king },
+            { suit: suits.heart, kind: kinds.king },
+            { suit: suits.heart, kind: kinds.ace },
+            { suit: suits.heart, kind: kinds.ace },
+            { suit: suits.heart, kind: kinds.ace }
+        ]);
     });
 
     test('Four of a Kind', () => {
