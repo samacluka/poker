@@ -332,13 +332,17 @@ const handRankings: Array<HandRanking> = [
     {name: "NOTHING", rank: 10, check: nothing},
 ];
 
+type Score = { score: number, cards: Array<Card> };
+type Scores = { [key: string]: Score };
+type IndexTree = { [key: number]: { [key: number]: number } };
+
 /** *************************************************************** **/
 /** *************************************************************** **/
 /** *********************** ORCHESTRATORS ************************* **/
 /** *************************************************************** **/
 /** *************************************************************** **/
 
-export function rankHand(cards: Array<Card>, communal: Array<Card>){
+export function rankHand(cards: Array<Card>, communal: Array<Card>): Hand {
     let res: Array<Card> | boolean;
     for(let i = 0; i < handRankings.length; i++){
         res = handRankings[i].check.call(that, cards.concat(communal));
@@ -359,13 +363,13 @@ export function rankHand(cards: Array<Card>, communal: Array<Card>){
     };
 }
 
-function sortPlayersByProbability(players: Array<Player>){
+function sortPlayersByProbability(players: Array<Player>): Array<Player> {
     return players.sort((a: Player, b: Player) =>
         (a.probabilityOfWinning ?? 0) > (b.probabilityOfWinning ?? 0) ? -1 : 1
     );
 }
 
-function sortPlayersByHand(players: Array<Player>){
+function sortPlayersByHand(players: Array<Player>): Array<Player> {
     return players.sort((a: Player, b: Player) =>
         (a.hand?.ranking?.rank ?? 0) > (b.hand?.ranking?.rank ?? 0) ? 1 : (
             (a.hand?.ranking?.rank ?? 0) < (b.hand?.ranking?.rank ?? 0) ? -1 : (
@@ -375,7 +379,7 @@ function sortPlayersByHand(players: Array<Player>){
     );
 }
 
-function compareHands(players: Array<Player>, communal: Array<Card>){
+function compareHands(players: Array<Player>, communal: Array<Card>): Array<Player> {
     for(const index in players){
         players[index].hand = rankHand(players[index].hand?.cards ?? [], communal);
     }
@@ -399,8 +403,8 @@ function groupBy(cards: Array<Card>, groupBySuits: boolean = true): { [ key: num
     return retObj;
 }
 
-function buildIndexTree(cards: Array<Card>, groupBySuits: boolean = true){
-    let retObj: any = {};
+function buildIndexTree(cards: Array<Card>, groupBySuits: boolean = true): IndexTree {
+    let retObj: { [ key: number ]: { [key: number]: number } } = {};
     let i: number;
 
     if(groupBySuits) {
@@ -415,7 +419,7 @@ function buildIndexTree(cards: Array<Card>, groupBySuits: boolean = true){
     return retObj;
 }
 
-function getTreeIndex(tree: any, card: Card){
+function getTreeIndex(tree: IndexTree, card: Card): number {
     if(Object.keys(tree).length == 4) return tree[ card.suit ][ card.kind ] ?? undefined;
     else return tree[ card.kind ][ card.suit ] ?? undefined;
 }
@@ -477,14 +481,14 @@ export function probability(players: Array<Player>, dealer: Dealer){
 /** *************************************************************** **/
 /** *************************************************************** **/
 
-export function decipherHand(original: string){
-    let strCards = original.split(",");
+export function decipherHand(original: string): Array<Card> {
+    let strCards = original.split(/\s*,\s*|\s+/);
     let cards: Array<Card> = [];
-    for(const cardStr of strCards) cards.push(decipherCard(cardStr) );
+    for(const cardStr of strCards) cards.push( decipherCard(cardStr) );
     return cards;
 }
 
-export function decipherCard(original: string){
+export function decipherCard(original: string): Card {
     let suit: number = 0;
     let kind: number = 0;
 
@@ -515,7 +519,7 @@ export function decipherCard(original: string){
 
     let suitKey: string = "";
     let suitKeys = Object.keys(_suits);
-    for(const suitKey of suitKeys) {
+    for(suitKey of suitKeys) {
         if(text.indexOf(suitKey) != -1){
             suit = _suits[suitKey];
             break;
@@ -531,7 +535,7 @@ export function decipherCard(original: string){
     return {suit: suit, kind: kind} as Card;
 }
 
-export function displayCard(card: Card | null | undefined = null){
+export function displayCard(card: Card | null | undefined = null): string {
     if(!card) return "";
 
     const _suits: any = {
@@ -560,7 +564,7 @@ export function displayCard(card: Card | null | undefined = null){
     return `[${ _kinds[ card.kind ] }${ _suits[ card.suit ] }]`;
 }
 
-export function displayCards(cards: Array<Card> = []){
+export function displayCards(cards: Array<Card> = []): string {
     let retStr: string = "";
     for(const card of cards) {
         retStr += displayCard(card);
@@ -618,7 +622,7 @@ function fillRestOfHand(best: Array<Card>, allCards: Array<Card>): Array<Card> {
  * Returns 0 if they are the same
  *
  * */
-function compareHighCards(a: Array<Card>, b: Array<Card>){
+function compareHighCards(a: Array<Card>, b: Array<Card>): number {
     a = sortByKind(a);
     b = sortByKind(b);
 
@@ -633,8 +637,8 @@ function compareHighCards(a: Array<Card>, b: Array<Card>){
     return 0;
 }
 
-function numOfEachKind(cards: Array<Card>){
-    let scores: any = {};
+function numOfEachKind(cards: Array<Card>): Scores {
+    let scores: Scores = {};
     for(const i in kinds) scores[ kinds[i] ] = {score: 0, cards: []};
 
     cards.forEach(card => {
@@ -645,8 +649,8 @@ function numOfEachKind(cards: Array<Card>){
     return scores;
 }
 
-function xOfAnyKind(x: number, cards: Array<Card>){
-    let scores: any = numOfEachKind(cards);
+function xOfAnyKind(x: number, cards: Array<Card>): Array<Card> | boolean {
+    let scores: Scores = numOfEachKind(cards);
 
     // best scores starts with aces
     // we can assume the first x of a kind we hit is the best x of a kind
@@ -660,8 +664,8 @@ function xOfAnyKind(x: number, cards: Array<Card>){
     return false;
 }
 
-function numOfEachSuit(cards: Array<Card>){
-    let scores: any = {};
+function numOfEachSuit(cards: Array<Card>): Scores {
+    let scores: Scores = {};
     for(const i in suits) scores[ suits[i] ] = {score: 0, cards: []};
 
     cards.forEach(card => {
@@ -672,7 +676,7 @@ function numOfEachSuit(cards: Array<Card>){
     return scores;
 }
 
-function xOfAnySuit(x: number, cards: Array<Card>){
+function xOfAnySuit(x: number, cards: Array<Card>): Array<Card> | boolean {
     let scores: any = numOfEachSuit(cards);
 
     for(const key in scores){
