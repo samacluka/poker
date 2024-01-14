@@ -138,6 +138,25 @@ const replacePairWithTwoFromThreeOfAKind: Card[] = [
     { suit: suits.heart, kind: kinds.ace }
 ];
 
+// More Straights
+const nonCompleteStraight: Card[] = [
+    { suit: suits.club, kind: kinds.queen },
+    { suit: suits.club, kind: kinds.king },
+    { suit: suits.club, kind: kinds.ace },
+    { suit: suits.club, kind: kinds.two },
+    { suit: suits.club, kind: kinds.three },
+    // Add more cards as needed
+];
+
+const nonAceStraight: Card[] = [
+    { suit: suits.club, kind: kinds.two },
+    { suit: suits.club, kind: kinds.three },
+    { suit: suits.club, kind: kinds.four },
+    { suit: suits.club, kind: kinds.five },
+    { suit: suits.club, kind: kinds.six },
+    // Add more cards as needed
+];
+
 
 describe('Poker Hand Tests', () => {
     test('Nothing', () => {
@@ -203,6 +222,9 @@ describe('Poker Hand Tests', () => {
         expect(straight(fourOfAKindCards)).toEqual(false);
         expect(straight(straightFlushCards)).toEqual(expect.any(Array));
         expect(straight(royalFlushCards)).toEqual(expect.any(Array));
+
+        expect(straight(nonCompleteStraight)).toEqual(false);
+        expect(straight(nonAceStraight)).toEqual(nonAceStraight);
     });
 
     test('Flush', () => {
