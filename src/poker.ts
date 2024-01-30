@@ -205,8 +205,9 @@ export class Dealer {
             } while(numBurned < 1);
         }
 
-        this.turn = this.drawTopCard();
+        this.turn = card;
         this.all.push(this.turn);
+
         
         return this;
     }
@@ -224,7 +225,7 @@ export class Dealer {
             } while(numBurned < 1);
         }
 
-        this.river = this.drawTopCard();
+        this.river = card;
         this.all.push(this.river);
 
         return this;
@@ -369,22 +370,21 @@ function sortPlayersByProbability(players: Array<Player>): Array<Player> {
     );
 }
 
-function sortPlayersByHand(players: Array<Player>): Array<Player> {
-    return players.sort((a: Player, b: Player) =>
-        (a.hand?.ranking?.rank ?? 0) > (b.hand?.ranking?.rank ?? 0) ? 1 : (
-            (a.hand?.ranking?.rank ?? 0) < (b.hand?.ranking?.rank ?? 0) ? -1 : (
-                compareHighCards(a.hand?.best ?? [], b.hand?.best ?? [])
-            )
-        )
-    );
-}
-
 function compareHands(players: Array<Player>, communal: Array<Card>): Array<Player> {
     for(const index in players){
         players[index].hand = rankHand(players[index].hand?.cards ?? [], communal);
     }
 
-    return sortPlayersByHand(players);
+    return players.sort((a: Player, b: Player) =>
+        (a.hand?.ranking?.rank ?? 0) > (b.hand?.ranking?.rank ?? 0) ? 1 : (
+            (a.hand?.ranking?.rank ?? 0) < (b.hand?.ranking?.rank ?? 0) ? -1 : (
+                compareHighCards(
+                    a.hand?.cards?.concat(communal) ?? [],
+                    b.hand?.cards?.concat(communal) ?? []
+                )
+            )
+        )
+    );
 }
 
 function groupBy(cards: Array<Card>, groupBySuits: boolean = true): { [ key: number ]: Array<Card> } {
