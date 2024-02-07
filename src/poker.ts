@@ -344,24 +344,21 @@ type IndexTree = { [key: number]: { [key: number]: number } };
 /** *************************************************************** **/
 
 export function rankHand(cards: Array<Card>, communal: Array<Card>): Hand {
-    let res: Array<Card> | boolean;
-    for(let i = 0; i < handRankings.length; i++){
-        res = handRankings[i].check.call(that, cards.concat(communal));
-        if(!!res || i == (handRankings.length - 1)) {
-            return <Hand>{
+    let bestHand: Array<Card> | boolean;
+    let worstRank: HandRanking = handRankings[handRankings.length - 1];
+
+    for(const ranking of handRankings) {
+        bestHand = ranking.check.call(that, cards.concat(communal));
+        if (bestHand !== false || ranking === worstRank) {
+            return {
                 cards: cards,
-                best: res,
-                ranking: handRankings[i]
-            };
+                best: bestHand !== false ? bestHand : [],
+                ranking: ranking
+            } as Hand;
         }
     }
 
-    // should be unreachable
-    return <Hand>{
-        cards: cards,
-        best: [],
-        ranking: handRankings[handRankings.length - 1]
-    };
+    return <Hand>{ cards: cards, best: [], ranking: worstRank };
 }
 
 function sortPlayersByProbability(players: Array<Player>): Array<Player> {
@@ -375,16 +372,33 @@ function compareHands(players: Array<Player>, communal: Array<Card>): Array<Play
         players[index].hand = rankHand(players[index].hand?.cards ?? [], communal);
     }
 
-    return players.sort((a: Player, b: Player) =>
-        (a.hand?.ranking?.rank ?? 0) > (b.hand?.ranking?.rank ?? 0) ? 1 : (
-            (a.hand?.ranking?.rank ?? 0) < (b.hand?.ranking?.rank ?? 0) ? -1 : (
-                compareHighCards(
-                    a.hand?.cards?.concat(communal) ?? [],
-                    b.hand?.cards?.concat(communal) ?? []
-                )
-            )
-        )
-    );
+    return players.sort((a: Player, b: Player) => {
+        let rankDiff: number = (a.hand?.ranking?.rank ?? 0) - (b.hand?.ranking?.rank ?? 0);
+
+        if(rankDiff > 0) return 1;
+        else if(rankDiff < 0) return -1;
+        else return compareHighCards((a.hand?.best ?? []), (b.hand?.best ?? []));
+    });
+}
+
+function setWinnersAndProbabilities(players: Array<Player>): Array<Player> {
+    let winnerCount: number = 0;
+    let i: number = 0;
+    let nextRank: number | undefined = players[i].hand?.ranking?.rank;
+
+    while(players[i].hand?.ranking?.rank == nextRank) {
+        winnerCount++;
+        if(i+1 == players.length) break;
+        nextRank = players[i + 1]?.hand?.ranking?.rank;
+        i++;
+    }
+
+    for(i = 0; i < players.length; i++){
+        if( i < winnerCount ) players[i].probabilityOfWinning = 1.0 / winnerCount;
+        else players[i].probabilityOfWinning = 0.0;
+    }
+
+    return players;
 }
 
 function groupBy(cards: Array<Card>, groupBySuits: boolean = true): { [ key: number ]: Array<Card> } {
@@ -430,7 +444,7 @@ export function probability(players: Array<Player>, dealer: Dealer){
 
     if(dealer.river){ // if the turn has been shown
         players = compareHands(players, dealer.all);
-        players.forEach((p, i) => p.probabilityOfWinning = (i == 0 ? 1 : 0)); // top player has won
+        players = setWinnersAndProbabilities(players);
     }
     else {
         let i: number;
@@ -677,7 +691,7 @@ function numOfEachSuit(cards: Array<Card>): Scores {
 }
 
 function xOfAnySuit(x: number, cards: Array<Card>): Array<Card> | boolean {
-    let scores: any = numOfEachSuit(cards);
+    let scores: Scores = numOfEachSuit(cards);
 
     for(const key in scores){
         if(scores[ key ].score >= x) {
@@ -703,7 +717,7 @@ export function onePair(cards: Array<Card>): Array<Card> | boolean {
 }
 
 export function twoPair(cards: Array<Card>): Array<Card> | boolean {
-    let scores: any = numOfEachKind(cards);
+    let scores: Scores = numOfEachKind(cards);
     let best: Array<Card> = [];
 
     let keys = Object.keys(scores).sort((a,b) => parseInt(a) > parseInt(b) ? 1 : -1).reverse();

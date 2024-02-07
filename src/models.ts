@@ -6,7 +6,7 @@ export interface Card {
 export interface HandRanking {
     name: string,
     rank: number,
-    check: any
+    check: Function
 }
 
 export interface Hand {
